@@ -278,6 +278,7 @@ def reverb(st, wet=0.2, decay_s=0.6, predelay_s=0.008, bright=6000, seed=7):
     """st: stereo [N,2] (or mono). Returns dry + wet with a tail appended."""
     if st.ndim == 1:
         st = np.stack([st, st], 1) * 0.7071
+    st = tail_window(st)
     ir = make_ir(decay_s, predelay_s, bright, seed)
     mono_in = st.mean(axis=1)
     wetL = signal.fftconvolve(mono_in * 0.5 + st[:, 0] * 0.5, ir[:, 0])
@@ -285,6 +286,17 @@ def reverb(st, wet=0.2, decay_s=0.6, predelay_s=0.008, bright=6000, seed=7):
     w = np.stack([wetL, wetR], 1)
     out = pad(st, w.shape[0]) + wet * w
     return trim_tail(out)
+
+
+def tail_window(x, frac=0.2, max_s=0.12):
+    """Half-cosine fade over the last part of a generated buffer so sounds whose
+    generator length is shorter than their natural ring never truncate."""
+    n = x.shape[0]
+    k = max(2, min(int(n * frac), int(max_s * SR)))
+    w = np.cos(np.linspace(0, np.pi / 2, k)) ** 2
+    x = x.copy()
+    x[n - k:] *= w[:, None] if x.ndim == 2 else w
+    return x
 
 
 def trim_tail(x, thresh_db=-96):
@@ -301,6 +313,7 @@ def finish(st, anchor=0, peak_db=-1.0, fin=0.0003):
     """Standard tail: DC-block, fade, trim, normalise."""
     if st.ndim == 1:
         st = np.stack([st, st], 1) * 0.7071
+    st = tail_window(st, 0.1, 0.05)
     st = hp(st, 18, order=2)  # DC / subsonic removal
     st = trim_tail(st)
     st = fade(st, fin, 0.012)
@@ -319,7 +332,7 @@ def soft_sat(x, drive=1.5):
 def s_heartbeat(seed=1):
     """Felt 'lub-dub': pitched sub thumps + chest-muffled knock."""
     def beat(f0, f1, tau, amp, s):
-        n = int(0.35 * SR)
+        n = int(0.6 * SR)
         t = np.arange(n) / SR
         f = f1 + (f0 - f1) * np.exp(-t / 0.03)
         body = np.sin(2 * np.pi * np.cumsum(f) / SR) * env_exp(n, tau, 0.004)
@@ -398,7 +411,7 @@ def s_whoosh(seed=0, dur=0.62, pan_from=0.9, pan_to=-0.9, f_lo=350, f_hi=2600,
 
 def s_boop(seed=0):
     """Soft rubbery bonk with wobble."""
-    n = int(0.45 * SR)
+    n = int(0.7 * SR)
     t = np.arange(n) / SR
     wob = 1 + 0.06 * np.sin(2 * np.pi * 17 * t) * np.exp(-t / 0.12)
     f = (175 + 180 * np.exp(-t / 0.035)) * wob
@@ -461,7 +474,8 @@ def s_pageflip(seed=0, dur=0.34, direction=1):
     cr = grains(n, lambda v: 260 * np.sin(np.pi * v) + 20, seed + 1, 2000, 9000) * 0.9
     snapn = int(0.03 * SR)
     snap = bp(noise(snapn, seed + 2), 800, 6000) * env_exp(snapn, 0.004, 0.0003) * 1.6
-    x = sw + cr
+    grab = bp(noise(n, seed + 7), 1500, 8000) * env_exp(n, 0.004, 0.0003) * 0.9
+    x = sw + cr + grab
     x = mix(x, at(snap, dur * 0.82))
     p = direction * np.interp(np.arange(len(x)), [0, len(x) - 1], [-0.6, 0.6])
     st = pan(x, p)
@@ -475,10 +489,10 @@ def s_clink(seed=0):
         ratios = [1.0, 2.31, 3.93, 5.72, 7.9]
         amps = [1.0, 0.6, 0.35, 0.2, 0.1]
         dec = [0.45, 0.28, 0.16, 0.09, 0.05]
-        m = modal([f0 * r_ for r_ in ratios], amps, dec, 0.9, s, detune=0.004)
+        m = modal([f0 * r_ for r_ in ratios], amps, dec, 1.8, s, detune=0.004)
         # beating from the cup's ovalness
-        t = tt(0.9)
-        m2 = modal([f0 * 1.006], [0.5], [0.4], 0.9, s + 9) * np.ones_like(t)
+        t = tt(1.8)
+        m2 = modal([f0 * 1.006], [0.5], [0.4], 1.8, s + 9)
         n = len(t)
         contact = hp(noise(n, s), 3000) * env_exp(n, 0.0012, 0.0001) * 0.6
         return amp * (m + m2 + contact)
@@ -533,7 +547,8 @@ def s_woof(seed=0, pitch=1.0, dur=0.27):
     jit = signal.lfilter([0.02], [1, -0.98], r.standard_normal(n)) * 0.6
     f0 = f0 * (1 + 0.015 * jit)
     # amplitude: sharp onset, peak ~0.2, decay
-    amp = np.interp(u, [0, 0.04, 0.16, 0.45, 0.8, 1.0], [0, 0.55, 1.0, 0.75, 0.25, 0.0]) ** 1.2
+    amp = np.interp(u, [0, 0.04, 0.14, 0.4, 0.7, 1.0], [0, 0.6, 1.0, 0.7, 0.22, 0.0]) ** 1.2
+    amp = signal.savgol_filter(amp, 481, 2).clip(0, None)
     # formant trajectories (small dog: high formants)
     F1 = np.interp(u, [0, 0.1, 0.3, 0.7, 1.0], [480, 1050, 1150, 800, 520]) * pitch ** 0.5
     F2 = np.interp(u, [0, 0.1, 0.3, 0.7, 1.0], [950, 1850, 1950, 1350, 1000]) * pitch ** 0.5
@@ -546,10 +561,10 @@ def s_woof(seed=0, pitch=1.0, dur=0.27):
     k = np.arange(1, K + 1)[None, :]
     freq = f0[:, None] * k
     # spectral tilt: brighter when louder (vocal effort)
-    tilt = 1.25 - 0.5 * amp
+    tilt = 1.7 - 0.55 * amp
     src = k ** (-tilt[:, None])
     A = src * formant_env(freq, forms)
-    A[freq > 11000] = 0
+    A *= 1 / (1 + (freq / 6000) ** 4)
     phase = 2 * np.pi * np.cumsum(f0) / SR
     ph_off = r.random(K) * 0.3
     x = np.sum(A * np.sin(phase[:, None] * k + ph_off[None, :]), axis=1)
@@ -558,7 +573,7 @@ def s_woof(seed=0, pitch=1.0, dur=0.27):
     kk = np.arange(1, K * 2, 2)[None, :] * 0.5
     fr = f0[:, None] * kk
     Ar = kk ** (-1.3) * formant_env(fr, forms)
-    Ar[fr > 11000] = 0
+    Ar *= 1 / (1 + (fr / 6000) ** 4)
     x += rough * np.sum(Ar * np.sin(phase[:, None] * kk), axis=1) * 0.5
     x *= amp
     # breath / aspiration through the same formants
@@ -602,11 +617,11 @@ def sparkle(n, seed, rate_fn, notes, amp_fn=None, dec=(0.06, 0.25), pan_fn=None)
 
 def s_ting(seed=0):
     """Ring glint: high bell + shimmer grains."""
-    n = int(1.4 * SR)
+    n = int(2.4 * SR)
     f0 = 2637.0  # E7
     bell = modal([f0, f0 * 2.0, f0 * 2.76, f0 * 5.4], [1, 0.3, 0.45, 0.12],
-                 [0.55, 0.3, 0.2, 0.06], 1.4, seed)
-    t = tt(1.4)
+                 [0.55, 0.3, 0.2, 0.06], 2.4, seed)
+    t = tt(2.4)
     bell += 0.5 * np.sin(2 * np.pi * f0 * 1.003 * t) * np.exp(-t / 0.5)  # beating
     strike = hp(noise(n, seed), 5000) * env_exp(n, 0.002, 0.0002) * 0.4
     notes = [2093, 2349, 2637, 3136, 3520, 4186, 4699, 5274]
@@ -619,15 +634,15 @@ def s_ting(seed=0):
 
 def s_confetti(seed=0):
     """Party popper: sharp bang + tube pop + long paper-rustle tail."""
-    n = int(2.2 * SR)
+    n = int(2.6 * SR)
     t = np.arange(n) / SR
     bang = noise(n, seed) * env_exp(n, 0.012, 0.0003)
     bang = bp(bang, 300, 9000) * 1.3
     boom = np.sin(2 * np.pi * np.cumsum(60 + 110 * np.exp(-t / 0.02)) / SR) * env_exp(n, 0.09, 0.001)
-    tube = modal([420, 980], [0.5, 0.2], [0.03, 0.02], 2.2, seed)
+    tube = modal([420, 980], [0.5, 0.2], [0.03, 0.02], 2.6, seed)
     # rustle: dense then thinning, falling paper
     rust_rate = lambda v: 1400 * np.exp(-v * 3.2) + 30
-    rust_amp = lambda v: np.exp(-v * 2.2) * np.clip(v / 0.03, 0, 1)
+    rust_amp = lambda v: np.exp(-v * 2.2) * np.clip(v / 0.03, 0, 1) * np.cos(np.pi / 2 * v) ** 2
     rs = [grains(n, rust_rate, seed + 10 + c, 2500, 11000, (0.001, 0.006), rust_amp) for c in range(2)]
     swish = svf(pink(n, seed + 3), 2500 + 3000 * np.exp(-t / 0.4), 0.8, "bp") * \
         env_exp(n, 0.35, 0.01) * 0.35
@@ -860,7 +875,7 @@ def s_pageturn(seed=0):
     # crinkles: dense at lift and just before landing
     cr_rate = lambda v: 60 + 700 * np.exp(-((v - 0.05) / 0.06) ** 2) + 450 * np.exp(-((v - 0.48) / 0.07) ** 2)
     crink = grains(n, cr_rate, seed + 3, 1500, 9000, (0.001, 0.01))
-    crink *= (t < 0.8)
+    crink *= np.clip((0.82 - t) / 0.08, 0, 1)
     # paper stiffness "creak" (low tonal flex)
     creak_f = 180 + 60 * np.sin(np.pi * travel)
     creak = np.sin(2 * np.pi * np.cumsum(creak_f) / SR) * trav_env * 0.06 * \
@@ -949,7 +964,7 @@ def s_slamhit(seed=0, pitch=1.0):
 
 def s_bloom(seed=0, note=1046.5, pan_pos=0.0):
     """Flower-bloom chime: glock tone + petal 'fwip' + a few sparkles."""
-    n = int(1.2 * SR)
+    n = int(2.2 * SR)
     t = np.arange(n) / SR
     tone = (np.sin(2 * np.pi * note * t) * np.exp(-t / 0.5) +
             0.35 * np.sin(2 * np.pi * note * 2.0 * t) * np.exp(-t / 0.2) +
