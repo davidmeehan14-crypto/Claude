@@ -785,6 +785,7 @@ def s_buzz(seed=0):
     table = bp(motor, 100, 1200)
     x = (lp(motor, 1500) * 0.7 + rattle + table * 0.4) * gate
     x = peak_eq(x, 330, 5, 2)
+    x = lp(x, 6000)
     st = widen(x, 0.15, seed)
     st = reverb(st, wet=0.1, decay_s=0.4)
     return finish(st, fin=0.003)
@@ -888,7 +889,7 @@ def s_pageturn(seed=0):
     slap = bp(noise(ln, seed + 4), 400, 5000) * env_exp(ln, 0.012, 0.0008) * 0.9
     puff = lp(noise(ln, seed + 5), 900) * env_exp(ln, 0.07, 0.005) * 0.9
     land = at(flap + slap + puff, land_t, n)
-    moving = bend + swoosh + creak + crink * 0.8
+    moving = (bend + swoosh + creak + crink * 0.8) * 1.35
     p = -0.7 + 1.3 * (0.5 - 0.5 * np.cos(np.pi * np.clip(t / 0.75, 0, 1)))
     st = pan(moving + tip, p) + pan(land, 0.45)
     st = peak_eq(st, 140, 3, 0.8)  # proximity
@@ -1187,7 +1188,7 @@ def build(qc=False):
     for i, tm in enumerate([42.0, 43.0, 44.0]):
         cue(tm, "slam_hit", s_slamhit(91 + i, pitch=[1.0, 1.06, 1.12][i]), -4.5, "slam_hit")
     cue(45.5, "whoosh", s_whoosh(95, dur=0.5, pan_from=-0.3, pan_to=0.3, f_lo=300, f_hi=4200,
-                                  peak_at=0.9, tonal=False), -10, "whoosh_zoom")
+                                  peak_at=0.9, tonal=False), -7, "whoosh_zoom")
 
     # ---- ACT 7
     # C major pentatonic melodic contour for 13 blooms 46.0..49.0
@@ -1200,7 +1201,7 @@ def build(qc=False):
             s_bloom(400 + i, pent[nm], side * (0.7 - 0.04 * i)), -17, f"bloom_{nm}")
     cue(51.3, "firework", s_firework(97, -0.45), -7, "firework")
     cue(51.8, "firework", s_firework(98, 0.5), -8)
-    cue(52.0, "flipbook", s_flipbook(99), -9, "flipbook")
+    cue(52.0, "flipbook", s_flipbook(99), -11, "flipbook")
 
     # ---- ACT 8
     cue(54.0, "bookclose", s_bookclose(100), -3.5, "bookclose")
