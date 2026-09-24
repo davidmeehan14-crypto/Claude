@@ -670,8 +670,8 @@
         ctx.save(); ctx.globalAlpha = clamp(k * 1.5) * out;
         ctx.translate(x + widths[i] / 2, cy + (1 - k) * 26); ctx.scale(.7 + .3 * k, .7 + .3 * k);
         ctx.textAlign = 'center';
-        ctx.lineWidth = 12; ctx.strokeStyle = isN ? 'rgba(22,22,29,.85)' : PAL.paper; ctx.strokeText(w, 0, 0);
-        ctx.fillStyle = isN ? '#FFF6E0' : PAL.ink; ctx.fillText(w, 0, 0);
+        ctx.lineWidth = 12; ctx.strokeStyle = PAL.paper; ctx.strokeText(w, 0, 0);
+        ctx.fillStyle = isN ? '#5A3A12' : PAL.ink; ctx.fillText(w, 0, 0);
         ctx.restore();
       }
       x += widths[i] + space;

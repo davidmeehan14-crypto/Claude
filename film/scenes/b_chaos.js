@@ -282,7 +282,9 @@
   function inkBall(ctx, o = {}) {
     const cx = o.x == null ? BALL.x : o.x, cy = o.y == null ? BALL.y : o.y, R = (o.r || BALL.r) * 1.14 * (o.scale || 1);
     const prog = o.progress == null ? 1 : o.progress, bt = o.t == null ? null : F.boil(o.t), lwk = o.lwScale || 1;
+    const skip = (o.scale || 1) > 2.2 ? 2 : 1;
     BALLSTROKES.forEach((st, si) => {
+      if (si % skip) return;
       const p = clamp((prog - st.t0 * .72) / .28);
       if (p <= 0) return;
       let pts = st.pts.map((q, k) => {
@@ -355,7 +357,7 @@
   const GUESTS = (function () { const g = []; TABLES.forEach((tb, ti) => { for (let k = 0; k < 7; k++) { const a = k / 7 * TAU + ti; g.push([tb[0] + Math.cos(a) * 50, tb[1] + Math.sin(a) * 42, ti]); } }); return g; })();
   const LINKS = (function () {
     const r = rng(77), out = [];
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 48; i++) {
       const a = Math.floor(r() * GUESTS.length); let b = Math.floor(r() * GUESTS.length); if (GUESTS[b][2] === GUESTS[a][2]) b = (b + 9) % GUESTS.length;
       out.push({ a, b, col: i % 5 === 0 ? P.red : i % 7 === 3 ? P.cobalt : P.ink, loops: 1 + Math.floor(r() * 3), seed: i * 1.7, bend: (r() - .5) * 160 });
     }
@@ -381,11 +383,11 @@
     for (let i = 0; i < nL; i++) {
       const L = LINKS[i], A = GUESTS[L.a], B = GUESTS[L.b], t0 = 17.3 + (i / LINKS.length) * 9.9;
       const p = clamp((t - t0) / .35); if (p <= 0) continue;
-      const pts = [], n = 22;
+      const pts = [], n = 16, jx = (hash2(bt, L.seed) - .5) * 3, jy = (hash2(bt, L.seed + 4) - .5) * 3;
       for (let s = 0; s <= n; s++) {
         const u = s / n, bx = lerp(A[0], B[0], u), by = lerp(A[1], B[1], u) + Math.sin(u * Math.PI) * L.bend;
         const la = u * TAU * L.loops, lr = Math.sin(u * Math.PI) * 38 * mess;
-        pts.push([bx + Math.cos(la + L.seed) * lr + (hash2(bt + s, L.seed) - .5) * 3, by + Math.sin(la + L.seed) * lr * .8 + (hash2(bt + s, L.seed + 4) - .5) * 3]);
+        pts.push([bx + Math.cos(la + L.seed) * lr + jx, by + Math.sin(la + L.seed) * lr * .8 + jy]);
       }
       strokePts(ctx, F.partialPolyline(pts, p), 2.6, L.col);
     }
@@ -647,7 +649,7 @@
     for (let k = layer.n; k < want.length; k++) drawItem(g, ITEMS[want[k]], ITEMS[want[k]].t + 5, { rest: true });
     layer.n = want.length; layer.list = want;
     const set = new Set(want);
-    return { c: layer.c, has: i => set.has(i) };
+    return { c: layer.c, n: want.length, has: i => set.has(i) };
   }
   function drawScrib(ctx, it, t) {
     if (t <= it.scribT) return;
@@ -656,9 +658,15 @@
     strokePts(ctx, F.partialPolyline(F.wobble(pts, t, it.seed, 2), p), 7);
   }
 
+  let sickC = null;
+  function sickPaper(g) { // cached 'sickly' tinted paper
+    if (!sickC) { sickC = F.offscreen('b_sick'); F.paper(sickC.getContext('2d'), { tint: '#DCE3B0', tintAlpha: .4 }); }
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(sickC, 0, 0); g.restore();
+  }
+
   // ─────────────────────────── world ───────────────────────────
   function drawWorld(g, t, B, o = {}) {
-    if (!o.noPaper) F.paper(g, { tint: '#DCE3B0', tintAlpha: t < 16 ? .38 : lerp(.28, .5, invLerp(16, 27.5, t)) });
+    if (!o.noPaper) sickPaper(g);
     g.save();
     if (o.pre) o.pre(g);
     const cam = camFull(t, B); applyCam(g, cam);
@@ -667,9 +675,9 @@
     drawBoard(g, t);
     const n = landedBefore(t + .25);
     const L = settledLayer(t);
-    g.drawImage(L.c, LAY.x, LAY.y, LAY.w, LAY.h);
+    if (L.n) g.drawImage(L.c, LAY.x, LAY.y, LAY.w, LAY.h);
     for (let i = 0; i < n; i++) { const it = ITEMS[i]; if (!it.onChar && !L.has(i)) drawItem(g, it, t, o); }
-    if (o.scrib) for (let i = 0; i < n; i++) if (!ITEMS[i].onChar && ITEMS[i].i % 2 === 0) drawScrib(g, ITEMS[i], t);
+    if (o.scrib) for (let i = 0; i < n; i++) if (!ITEMS[i].onChar && ITEMS[i].i % 3 === 0) drawScrib(g, ITEMS[i], t);
     characters(g, t, B);
     if (o.scrib) charScrib(g, t);
     for (let i = 0; i < n; i++) if (ITEMS[i].onChar) { drawItem(g, ITEMS[i], t, o); if (o.scrib) drawScrib(g, ITEMS[i], t); }
@@ -857,7 +865,7 @@
           drawWorld(ctx, t, B, { scrib: true, noPaper: true, pre: g => { g.translate(960, 540); g.rotate(spin); g.scale(ws, ws); g.translate(-960, -540); } });
           ctx.restore();
         }
-        inkBall(ctx, { progress: clamp((t - 27.55) / 1.9), scale: Bs, t, lwScale: lerp(1.4, 1, comp) });
+        inkBall(ctx, { progress: clamp((t - 27.55) / 1.9), scale: Bs, t, lwScale: lerp(1.25, 1, comp) });
         ctx.restore();
         vig(ctx, .25 + .25 * comp, '255,45,85');
         subPill(ctx, t);
