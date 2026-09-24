@@ -974,5 +974,5 @@
     },
     subtitle(t) { return t > 33.6 && t < 42 ? { x: 960, y: 1040 } : null; },
   });
-  window.C_ORDER = { _p: { rays, freshPage, oldPage, drawBall, ballState, drawPhone, appScreen, drawCard, CARDS, drawDotPeek, drawDashPeek, glowDot, drawGuides },  drawBall: (ctx, t) => drawBall(ctx, t, { x: BALL.x, y: BALL.y, s: 1, rot: 0 }, t), BALL };
+  window.C_ORDER = {  drawBall: (ctx, t) => drawBall(ctx, t, { x: BALL.x, y: BALL.y, s: 1, rot: 0 }, t), BALL };
 })();
