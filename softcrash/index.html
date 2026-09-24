@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft Crash</title>
+<style>
+  @font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; src: url(fonts/InstrumentSerif-Italic.woff2) format("woff2"); }
+  @font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; src: url(fonts/InstrumentSerif-Regular.woff2) format("woff2"); }
+  @font-face { font-family: "DM Mono"; font-weight: 300; src: url(fonts/DMMono-Light.woff2) format("woff2"); }
+  @font-face { font-family: "DM Mono"; font-weight: 400; src: url(fonts/DMMono-Regular.woff2) format("woff2"); }
+  html, body { margin: 0; height: 100%; background: #050406; overflow: hidden; }
+  #c { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; width: 100%; display: block; }
+  #ui { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: opacity .6s; }
+  #ui.hide { opacity: 0; pointer-events: none; }
+  #play { font: italic 28px "Instrument Serif", serif; color: #fff3e6; background: rgba(0,0,0,.35); border: 1px solid rgba(255,243,230,.4);
+    border-radius: 999px; padding: 14px 34px; cursor: pointer; letter-spacing: .08em; backdrop-filter: blur(6px); }
+  #play:hover { background: rgba(255,243,230,.12); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui"><button id="play">play — soft crash</button></div>
+<audio id="a" src="audio/soft_crash.mp3" preload="auto"></audio>
+<script src="data/features.js"></script>
+<script src="js/shaders.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/type.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
