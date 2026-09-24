@@ -1,7 +1,7 @@
 <title>Dundee to Leonida</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,600;0,800;1,800&family=IBM+Plex+Mono:wght@400;600&family=Mr+Dafoe&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,600;0,800;0,900;1,800&family=IBM+Plex+Mono:wght@400;600&family=Mr+Dafoe&family=Permanent+Marker&family=Press+Start+2P&display=swap">
 <style>
   :root {
     color-scheme: dark;
@@ -125,7 +125,7 @@
     <div class="gate" id="gate">
       <div>
         <button id="bigplay" type="button"><span class="tri"></span>Play the story</button>
-        <small>3 MIN · SOUND ON · 1995 → 19.11.2026</small>
+        <small>4.5 MIN · SOUND ON · 1995 → 19.11.2026</small>
       </div>
     </div>
   </div>
@@ -136,7 +136,7 @@
       <div class="fill" id="fill"></div>
       <div class="knob" id="knob"></div>
     </div>
-    <div class="time" id="time">0:00 / 3:28</div>
+    <div class="time" id="time">0:00 / 4:24</div>
     <button class="btn" id="snd" type="button" aria-label="Mute">SND</button>
     <button class="btn" id="fs" type="button" aria-label="Fullscreen"><svg viewBox="0 0 16 16"><path d="M1 1h5v2H3v3H1zm9 0h5v5h-2V3h-3zM1 10h2v3h3v2H1zm12 0h2v5h-5v-2h3z"/></svg></button>
   </div>
@@ -150,7 +150,8 @@
 const EXPORT = /[?&]export\b/.test(location.search);
 const W = 1920, H = 1080;
 const cv = document.getElementById('screen');
-const ctx = cv.getContext('2d');
+let ctx = cv.getContext('2d');
+const mainCtx = ctx;
 let S = 1;
 
 const F = {
@@ -159,6 +160,7 @@ const F = {
   pix: '"Press Start 2P", "Courier New", monospace',
   mono: '"IBM Plex Mono", Menlo, monospace',
   ui: '"Archivo", "Helvetica Neue", Arial, sans-serif',
+  mark: '"Permanent Marker", "Comic Sans MS", cursive',
 };
 
 /* ================= math ================= */
@@ -427,6 +429,7 @@ function police(lt, k) {
   if (on2) light(W, H, 900, '#2060ff', .45 * k);
 }
 
+
 /* ================= precomputed art ================= */
 const skyIVfar = makeSkyline(11, 80, -100, 2400, 120, 340, 50, 110);
 const skyVI = makeSkyline(57, 60, 380, 1560, 40, 250, 26, 70);
@@ -454,189 +457,9 @@ const bl = document.createElement('canvas'); bl.width = BW; bl.height = BH; cons
 const bl2 = document.createElement('canvas'); bl2.width = BW; bl2.height = BH; const b2ctx = bl2.getContext('2d');
 const HAS_FILTER = 'filter' in b2ctx;
 
-/* per-frame effect requests from scenes */
+
 const FX = { bloom: 0, glitch: 0, chroma: 0, vhs: 0, shake: 0, police: 0 };
-
-/* ================= SCENES ================= */
-
-function leonida2D(lt) {
-  const hor = 660;
-  ctx.fillStyle = vgrad(0, hor, [[0, '#170a36'], [.4, '#6d1f6e'], [.72, '#ff5d8f'], [1, '#ffbe73']]); ctx.fillRect(0, 0, W, hor);
-  glowDisc(1080, 600, 900, 'rgba(255,140,120,.45)');
-  ctx.fillStyle = '#ffe2a8'; ctx.beginPath(); ctx.arc(1080, 610, 120, 0, Math.PI * 2); ctx.fill();
-  drawSkyline(skyVI, hor, '#2b0e33', 0, 'rgba(120,255,240,.9)', .5);
-  ctx.fillStyle = vgrad(hor, H, [[0, '#5b2458'], [.4, '#2a1040'], [1, '#0b0518']]); ctx.fillRect(0, hor, W, H - hor);
-  for (let i = 0; i < 40; i++) {
-    const y = hor + 4 + i * i * .28, w = (340 - i * 7) * (1 + .15 * Math.sin(lt * 2.4 + i * 1.3));
-    rect(1080 - w / 2 + Math.sin(lt * 1.6 + i) * 18, y, w, 2, '#ffd08a', .6 - i * .012);
-  }
-  palm(80, H + 40, 900, .16, 0, '#12041a'); palm(1840, H + 40, 960, -.15, 1, '#12041a');
-}
-function eraColor(y) { let c = SCENES[1].col; for (const s of SCENES) if (s.id !== 'open' && s.id !== 'wait' && s.y[0] <= y) c = s.col; return c; }
-
-function sOpen(lt, sc) {
-  // --- flash-forward ---
-  if (lt < 2.2) {
-    leonida2D(lt);
-    const k = eoB(inv(.3, .7, lt));
-    ctx.save(); ctx.translate(W / 2, H / 2 - 20); ctx.scale(lerp(1.5, 1, k), lerp(1.5, 1, k));
-    T('19 · 11 · 2026', 0, 0, { s: 190, ls: 12, c: '#fff', a: inv(.3, .35, lt), glow: 'rgba(255,79,154,.9)', gb: 50 });
-    ctx.restore();
-    T('NOVEMBER 2026', W / 2, H / 2 + 120, { f: F.mono, s: 30, ls: 14, c: '#ffe2c4', a: inv(.7, 1, lt) });
-    FX.glitch = .15 + (hash(Math.floor(lt * 20)) > .7 ? .6 : 0) + inv(1.8, 2.2, lt);
-    FX.chroma = .5;
-    return;
-  }
-  // --- rewind ---
-  if (lt < 5.8) {
-    const k = eio(inv(2.3, 5.6, lt));
-    const yr = Math.round(lerp(2026, 1995, k));
-    const col = eraColor(yr);
-    rect(0, 0, W, H, '#050508');
-    glowDisc(W / 2, H / 2, 1100, hexA(col, .55));
-    for (let i = 0; i < 14; i++) rect(0, ((i * 97 + lt * 2400) % (H + 200)) - 100, W, 2 + hash(i) * 5, col, .08);
-    const v = Math.sin(k * Math.PI);
-    for (let j = 3; j >= 0; j--) T(String(yr), W / 2, H / 2 - 20 + j * 40 * v, { s: 380, ls: 18, c: j ? col : '#fff', a: j ? .18 * v : 1 });
-    const tag = (SCENES.slice().reverse().find(s => s.id !== 'wait' && s.id !== 'open' && s.y[0] <= yr + .5) || SCENES[1]).tag;
-    T(tag, W / 2, H / 2 + 230, { f: F.mono, s: 30, ls: 12, c: '#fff', a: .75 });
-    if (Math.floor(lt * 2.5) % 2 === 0) T('◀◀ REWIND', 120, 150, { f: F.pix, s: 36, al: 'left', c: '#fff', shadow: '#000', sx: 4, sy: 4 });
-    T('SP  ' + String(yr).slice(2) + ':' + String(Math.floor(lt * 37) % 60).padStart(2, '0') + ':' + String(Math.floor(lt * 911) % 60).padStart(2, '0'), W - 120, H - 150, { f: F.pix, s: 28, al: 'right', c: '#fff', shadow: '#000', sx: 3, sy: 3 });
-    FX.vhs = 1; FX.glitch = .25 + .3 * v;
-    return;
-  }
-  if (lt < 6.3) {
-    rect(0, 0, W, H, '#000');
-    T('■ STOP', 120, 150, { f: F.pix, s: 36, al: 'left', c: '#fff' });
-    FX.vhs = .6;
-    return;
-  }
-  // --- Dundee, 1995 ---
-  const push = eio(inv(6.3, sc.d, lt));
-  const wx = 1180, wy = 560;
-  ctx.save(); ctx.translate(wx, wy); ctx.scale(1 + .22 * push, 1 + .22 * push); ctx.translate(-wx, -wy);
-  ctx.fillStyle = vgrad(0, H, [[0, '#04060c'], [.7, '#0b1220'], [1, '#05070b']]); ctx.fillRect(-200, -200, W + 400, H + 400);
-  glowDisc(900, 180, 900, 'rgba(90,110,160,.12)');
-  // tenements
-  for (const t of tenements) {
-    const top = 860 - t.h;
-    ctx.fillStyle = '#090b11'; ctx.fillRect(t.x, top, t.w, t.h + 300);
-    ctx.beginPath(); ctx.moveTo(t.x - 6, top); ctx.lineTo(t.x + t.w / 2, top - 70); ctx.lineTo(t.x + t.w + 6, top); ctx.fill();
-    for (let c = 0; c < 2; c++) { const cx = t.x + t.w * (.2 + c * .55); ctx.fillRect(cx, top - 90, 22, 70); for (let p = 0; p < 3; p++) ctx.fillRect(cx + 2 + p * 7, top - 104, 4, 16); }
-    for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
-      const x = t.x + 22 + c * (t.w - 44) / 3, y = top + 40 + r * 110;
-      if (hash(t.i * 17 + r * 3 + c) > .86) { rect(x, y, 40, 62, '#ffcf8a', .25); }
-      else rect(x, y, 40, 62, '#141824', 1);
-    }
-  }
-  // the studio window
-  const flick = .8 + .2 * Math.sin(lt * 30) * Math.sin(lt * 7);
-  glowDisc(wx, wy, 360, 'rgba(255,190,120,.35)', 1);
-  rect(wx - 55, wy - 70, 110, 140, '#ffcf8a');
-  rect(wx - 42, wy - 20, 38, 30, '#4a86ff', flick); rect(wx + 6, wy - 16, 34, 26, '#4a86ff', flick * .9);
-  rect(wx - 48, wy + 12, 96, 10, '#1a120a'); rect(wx - 30, wy - 60, 8, 50, '#1a120a');
-  ctx.strokeStyle = '#0a0b10'; ctx.lineWidth = 6; ctx.strokeRect(wx - 55, wy - 70, 110, 140); ctx.beginPath(); ctx.moveTo(wx, wy - 70); ctx.lineTo(wx, wy + 70); ctx.moveTo(wx - 55, wy); ctx.lineTo(wx + 55, wy); ctx.stroke();
-  // street
-  ctx.fillStyle = vgrad(860, H, [[0, '#0c0f16'], [1, '#040508']]); ctx.fillRect(-200, 860, W + 400, 400);
-  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .35;
-  ctx.drawImage(sprite('#ffcf8a'), wx - 40, 870, 80, 260);
-  ctx.drawImage(sprite('#ffb060'), 1540 - 60, 870, 120, 300);
-  ctx.restore();
-  // lamp
-  ctx.fillStyle = '#07080c'; ctx.fillRect(1534, 300, 12, 560); ctx.fillRect(1500, 292, 60, 14);
-  const lampK = .9 + .1 * Math.sin(lt * 13);
-  ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  const cg = ctx.createLinearGradient(0, 300, 0, 860); cg.addColorStop(0, `rgba(255,170,90,${.35 * lampK})`); cg.addColorStop(1, 'rgba(255,170,90,0)');
-  ctx.fillStyle = cg; ctx.beginPath(); ctx.moveTo(1520, 306); ctx.lineTo(1540, 306); ctx.lineTo(1760, 860); ctx.lineTo(1300, 860); ctx.fill();
-  ctx.restore();
-  light(1530, 310, 120, '#ffb060', lampK);
-  ctx.restore();
-  rain(lt, 300, .2);
-  ctx.save(); ctx.beginPath(); ctx.moveTo(1520, 306); ctx.lineTo(1560, 306); ctx.lineTo(1800, 900); ctx.lineTo(1260, 900); ctx.clip(); rain(lt + 3, 160, .5, 1, '255,200,140'); ctx.restore();
-  // words
-  T(typed('Every empire starts somewhere.', lt, 6.8, 18), W / 2, 330, { f: F.mono, s: 50, c: '#e9e4da', a: 1 - inv(9.6, 10.1, lt) });
-  if (lt > 10.2) {
-    const k = eo3(inv(10.2, 12.6, lt));
-    T('DUNDEE, SCOTLAND', W / 2, 290, { s: 170, ls: lerp(44, 16, k), a: inv(10.2, 11, lt), c: '#f3efe8', glow: 'rgba(0,0,0,.7)', gb: 30 });
-    T('1995', W / 2, 410, { f: F.mono, s: 34, ls: 14, a: inv(11.2, 11.8, lt), c: '#ffb46b' });
-  }
-  const la = inv(12.6, 13.2, lt);
-  if (la) {
-    const sx = wx + 70 + push * 20, sy = wy - 40;
-    ctx.save(); ctx.globalAlpha = la; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 90, sy - 80); ctx.lineTo(sx + 330, sy - 80); ctx.stroke(); ctx.restore();
-    T('DMA DESIGN', sx + 100, sy - 104, { f: F.mono, s: 24, w: 600, ls: 5, al: 'left', c: '#fff', a: la });
-    T('A SMALL STUDIO, LATE AT NIGHT', sx + 100, sy - 52, { f: F.mono, s: 18, ls: 3, al: 'left', c: '#ffcf8a', a: la });
-  }
-}
-
-function roadLoop(u) {
-  const x0 = 380, x1 = 1540, y0 = 300, y1 = 780, w = x1 - x0, h = y1 - y0, P = 2 * (w + h);
-  let s = ((u % 1) + 1) % 1 * P;
-  if (s < w) return [x0 + s, y0, 0]; s -= w;
-  if (s < h) return [x1, y0 + s, Math.PI / 2]; s -= h;
-  if (s < w) return [x1 - s, y1, Math.PI]; s -= w;
-  return [x0, y1 - s, -Math.PI / 2];
-}
-function carTop(x, y, a, body, roof, len = 64, wid = 32) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(-len / 2 + 4, -wid / 2 + 6, len, wid);
-  ctx.fillStyle = body; rrect(-len / 2, -wid / 2, len, wid, 6); ctx.fill();
-  ctx.fillStyle = roof; ctx.fillRect(-len * .12, -wid / 2 + 4, len * .36, wid - 8);
-  ctx.fillStyle = 'rgba(160,210,255,.8)'; ctx.fillRect(len * .24, -wid / 2 + 5, len * .1, wid - 10);
-  ctx.restore();
-}
-function sRace(lt, sc) {
-  const z = 1 + .06 * eio(inv(0, sc.d, lt));
-  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
-  rect(-100, -100, W + 200, H + 200, '#0a1a2e');
-  ctx.save(); ctx.strokeStyle = 'rgba(120,170,255,.10)'; ctx.lineWidth = 1; ctx.beginPath();
-  for (let x = 0; x <= W; x += 40) { ctx.moveTo(x, -100); ctx.lineTo(x, H + 100); }
-  for (let y = 0; y <= H; y += 40) { ctx.moveTo(-100, y); ctx.lineTo(W + 100, y); }
-  ctx.stroke(); ctx.strokeStyle = 'rgba(120,170,255,.22)'; ctx.beginPath();
-  for (let x = 0; x <= W; x += 200) { ctx.moveTo(x, -100); ctx.lineTo(x, H + 100); }
-  for (let y = 0; y <= H; y += 200) { ctx.moveTo(-100, y); ctx.lineTo(W + 100, y); }
-  ctx.stroke(); ctx.restore();
-  ctx.save(); ctx.strokeStyle = '#1b2a40'; ctx.lineWidth = 86; ctx.lineJoin = 'round';
-  ctx.strokeRect(380, 300, 1160, 480);
-  ctx.strokeStyle = 'rgba(255,220,120,.5)'; ctx.lineWidth = 3; ctx.setLineDash([22, 22]); ctx.lineDashOffset = -lt * 60;
-  ctx.strokeRect(380, 300, 1160, 480); ctx.restore();
-  const u = lt * .085;
-  const bump = lt > 4.4 ? Math.max(0, Math.sin(lt * 7)) * .012 : 0;
-  const [rx, ry, ra] = roadLoop(u), [cx, cy, ca] = roadLoop(u - .05 + bump + (lt > 4.4 ? .025 : 0));
-  carTop(rx, ry + (lt > 4.4 ? Math.sin(lt * 9) * 6 : 0), ra, '#e0463a', '#8e231c');
-  const flash = Math.floor(lt * 7) % 2;
-  carTop(cx, cy, ca, '#e8ecf2', '#1b1f28');
-  light(cx, cy, 90, flash ? '#ff2840' : '#2870ff', .9);
-  if (lt > 4.4) {
-    for (let i = 0; i < 8; i++) {
-      const k = (lt * 3 + i / 8) % 1;
-      rect(rx + (hash(i + Math.floor(lt * 3)) - .5) * 90 * k, ry + (hash(i * 2 + Math.floor(lt * 3)) - .5) * 90 * k, 5, 5, '#ffd36b', (1 - k) * .9);
-    }
-    if (Math.sin(lt * 7) > .9) FX.shake += .25;
-  }
-  ctx.restore();
-  const cardA = inv(.2, .8, lt);
-  ctx.save(); ctx.globalAlpha = cardA; ctx.translate(0, (1 - eo3(cardA)) * 30);
-  ctx.fillStyle = 'rgba(8,16,30,.86)'; rrect(470, 395, 980, 290, 8); ctx.fill();
-  ctx.strokeStyle = 'rgba(120,170,255,.35)'; ctx.lineWidth = 2; ctx.stroke();
-  T('PROJECT FILE · DMA DESIGN · DUNDEE · 1995', 510, 440, { f: F.mono, s: 22, ls: 4, al: 'left', c: '#7fa9e6' });
-  T("RACE'N'CHASE", 510, 540, { s: 130, al: 'left', ls: 2, c: '#f3efe8' });
-  if (lt > 9.2) { const k = eo3(inv(9.2, 9.6, lt)); ctx.fillStyle = '#ff3b3b'; ctx.fillRect(500, 536, 690 * k, 10); }
-  T('COPS AND ROBBERS, SEEN FROM ABOVE', 510, 635, { f: F.mono, s: 22, ls: 3, al: 'left', c: '#9fb7d8' });
-  ctx.restore();
-  if (lt > 1.2) {
-    const k = eoB(inv(1.2, 1.55, lt));
-    ctx.save(); ctx.translate(1300, 440); ctx.rotate(-.2); ctx.scale(lerp(2.4, 1, k), lerp(2.4, 1, k)); ctx.globalAlpha = inv(1.2, 1.3, lt) * .92;
-    ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = 6; ctx.strokeRect(-150, -38, 300, 76);
-    T('PROTOTYPE', 0, 2, { s: 54, ls: 6, c: '#ff3b3b' }); ctx.restore();
-  }
-  if (lt > 9.6) {
-    const k = eoB(inv(9.6, 10.1, lt));
-    ctx.save(); ctx.translate(960, 262); ctx.scale(lerp(1.6, 1, k), lerp(1.6, 1, k)); ctx.globalAlpha = inv(9.6, 9.75, lt);
-    T('GRAND THEFT AUTO', 0, 0, { s: 120, ls: 6, c: '#ff3b3b', glow: 'rgba(255,40,40,.6)', gb: 40 });
-    ctx.restore();
-  }
-}
+function withCtx(c, fn) { const old = ctx; ctx = c; try { fn(); } finally { ctx = old; } }
 
 function drawPixCity(camX, camY, lt, chaseX, chaseY, boom) {
   const P = 72;
@@ -692,323 +515,6 @@ function drawPixCity(camX, camY, lt, chaseX, chaseY, boom) {
   }
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(pix, 0, 0, W, H); ctx.restore();
 }
-function sGTA1(lt, sc) {
-  const carX = 40 + lt * 62, carY = 6;
-  drawPixCity(carX - 190, carY - 135, lt, carX, carY, lt - 1.2);
-  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.14)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2); ctx.restore();
-  T('$' + String(Math.floor(lt * 1377)).padStart(7, '0'), W - 110, 140, { f: F.pix, s: 40, al: 'right', c: '#f5d547', shadow: '#000', sx: 4, sy: 4 });
-  T('x' + (1 + Math.floor(lt / 3)), W - 110, 200, { f: F.pix, s: 30, al: 'right', c: '#fff', shadow: '#000', sx: 3, sy: 3 });
-  const wanted = Math.min(4, 1 + Math.floor(lt / 2.5));
-  for (let i = 0; i < 4; i++) {
-    const on = i < wanted && (Math.floor(lt * 4) % 2 || i < wanted - 1);
-    star(W / 2 - 105 + i * 70, 138, 26, on ? '#f5d547' : 'rgba(255,255,255,.18)');
-  }
-  const mv = eio(inv(5.2, 6.2, lt));
-  ctx.save();
-  ctx.translate(lerp(W / 2, 330, mv), lerp(H / 2 - 40, 160, mv)); ctx.scale(lerp(1, .42, mv), lerp(1, .42, mv));
-  if (lt > 1.2) {
-    const k = eoB(inv(1.2, 1.5, lt));
-    T('1997', 0, -60, { f: F.pix, s: 190 * lerp(1.6, 1, k), c: '#f5d547', shadow: '#000', sx: 12, sy: 12, a: inv(1.2, 1.3, lt) });
-  }
-  T(typed('GRAND THEFT AUTO', lt, 2.3, 12), 0, 150, { f: F.pix, s: 70, c: '#fff', shadow: '#000', sx: 6, sy: 6 });
-  ctx.restore();
-  ['PC · PLAYSTATION', 'LIBERTY CITY · SAN ANDREAS · VICE CITY'].forEach((f, i) => {
-    const a = inv(6.2 + i * .35, 6.6 + i * .35, lt);
-    if (!a) return;
-    const w = measure(f, { f: F.pix, s: 20 }) + 36;
-    rect(120, 240 + i * 58, w, 44, '#000', a * .72);
-    T(f, 138, 263 + i * 58, { f: F.pix, s: 20, al: 'left', c: i ? '#9fd3ff' : '#fff', a });
-  });
-  if (lt > 9.6) {
-    const k = eoB(inv(9.6, 10.1, lt));
-    ctx.save(); ctx.translate(1390, 520); ctx.rotate(lerp(-.5, -.07, k)); ctx.scale(lerp(1.8, 1, k), lerp(1.8, 1, k));
-    ctx.globalAlpha = inv(9.6, 9.7, lt);
-    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(-300, -190, 620, 410);
-    ctx.fillStyle = '#f1ece1'; ctx.fillRect(-320, -210, 620, 410);
-    ctx.fillStyle = '#121212'; ctx.fillRect(-320, -210, 620, 70);
-    T('THE DAILY OUTRAGE', -10, -175, { s: 44, ls: 4, c: '#f1ece1' });
-    T('MPs DEMAND BAN', -10, -80, { s: 86, c: '#121212' });
-    T("ON 'SICK' GAME", -10, 10, { s: 86, c: '#c8102e' });
-    ctx.fillStyle = 'rgba(0,0,0,.2)';
-    for (let i = 0; i < 5; i++) { ctx.fillRect(-290, 80 + i * 22, 270, 8); ctx.fillRect(10, 80 + i * 22, 260 - (i === 4 ? 90 : 0), 8); }
-    ctx.restore();
-  }
-}
-
-function s99(lt, sc) {
-  rect(0, 0, W, H, '#050507');
-  const panels = [
-    () => {
-      rect(0, 0, 640, H, '#0c0b09');
-      glowDisc(320, 820, 520, 'rgba(226,179,60,.18)');
-      drawSkyline(sky98, 1000, '#e2b33c', -lt * 6);
-      rect(0, 1000, 640, 80, '#e2b33c');
-      T('1998', 320, 250, { s: 170, c: '#e2b33c' });
-      T('ROCKSTAR GAMES', 320, 375, { s: 66, ls: 4 });
-      ['A new label in New York,', 'led by Sam & Dan Houser.', 'Take-Two buys DMA Design.'].forEach((l, i) => T(l, 320, 450 + i * 38, { f: F.mono, s: 25, c: '#d8cfb8' }));
-    },
-    () => {
-      rect(0, 0, 640, H, '#f1ece0');
-      const r = 210 + Math.sin(lt * 2) * 6;
-      [['#1d3f94', r], ['#f1ece0', r * .68], ['#c8102e', r * .4]].forEach(([c, rr]) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(320, 790, rr, 0, Math.PI * 2); ctx.fill(); });
-      T('1999', 320, 250, { s: 170, c: '#c8102e' });
-      T('LONDON 1969', 320, 375, { s: 66, ls: 4, c: '#1d3f94' });
-      ['The first expansion pack.', 'Swinging London: the only', 'GTA set outside America.'].forEach((l, i) => T(l, 320, 450 + i * 38, { f: F.mono, s: 25, c: '#3a3530' }));
-    },
-    () => {
-      ctx.fillStyle = vgrad(0, H, [[0, '#12001f'], [1, '#2d0046']]); ctx.fillRect(0, 0, 640, H);
-      ctx.save(); ctx.strokeStyle = 'rgba(40,240,255,.25)'; ctx.lineWidth = 2; ctx.beginPath();
-      for (let i = -8; i <= 8; i++) { ctx.moveTo(320 + i * 20, 640); ctx.lineTo(320 + i * 140, H); }
-      for (let k = 0; k < 10; k++) { const z = ((k + lt * 1.4) % 10) / 10, y = 640 + Math.pow(z, 2.2) * 440; ctx.moveTo(0, y); ctx.lineTo(640, y); }
-      ctx.stroke(); ctx.restore();
-      rect(0, 636, 640, 4, '#ff3bd4');
-      T('1999', 320, 250, { s: 170, c: '#28f0ff', glow: 'rgba(40,240,255,.7)', gb: 26 });
-      T('GTA 2', 320, 375, { s: 66, ls: 4, c: '#ff3bd4' });
-      ['Anywhere City: a retro-future', 'town run by rival gangs.', 'Respect decides who shoots you.'].forEach((l, i) => T(l, 320, 450 + i * 38, { f: F.mono, s: 25, c: '#e7d6ff' }));
-      ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.18)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, 640, 2); ctx.restore();
-    },
-  ];
-  panels.forEach((fn, i) => {
-    const k = eoX(inv(.2 + i * .7, 1.2 + i * .7, lt));
-    if (!k) return;
-    ctx.save(); ctx.beginPath(); ctx.rect(i * 640, 0, 640, H); ctx.clip();
-    ctx.translate(i * 640, (1 - k) * H * (i % 2 ? -1 : 1)); fn(); ctx.restore();
-  });
-}
-
-/* --- GTA III: the camera comes down --- */
-function sky3(cam, stops, sunAz, sunCol, sunR, glow) {
-  const hor = cam.hor;
-  ctx.fillStyle = vgrad(hor - 760, hor, stops); ctx.fillRect(0, 0, W, Math.max(0, hor) + 2);
-  if (sunAz != null && hor > -200) {
-    const sx = cam.az(sunAz);
-    glowDisc(sx, hor - 30, 900, glow);
-    if (sunR) { ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sx, hor - sunR * .55, sunR, 0, Math.PI * 2); ctx.fill(); }
-    return sx;
-  }
-  return null;
-}
-function s3(lt, sc) {
-  const DEG = Math.PI / 180;
-  const kDown = eio(inv(3.2, 7.6, lt));
-  const pitch = lerp(89.5, 4.5, kDown) * DEG;
-  const camZ = 100 + 70 * lt + 70 * Math.pow(Math.max(0, lt - 6), 1.6);
-  const cam = cam3(0, lerp(1500, 24, kDown), camZ, Math.sin(lt * .25) * .03 * kDown, pitch);
-  sky3(cam, [[0, '#0b1224'], [.55, '#33466f'], [.85, '#c77a5a'], [1, '#f2a36b']], .12, '#ffd0a0', 0, 'rgba(255,170,110,.4)');
-  ctx.fillStyle = '#10141d'; ctx.fillRect(0, Math.max(0, cam.hor), W, H);
-  const A = 50;
-  const road = [cam.p(-A, 0, camZ + 8), cam.p(A, 0, camZ + 8), cam.p(A, 0, camZ + 3400), cam.p(-A, 0, camZ + 3400)];
-  if (road.every(p => p[2] > 0)) {
-    ctx.fillStyle = '#1c1f27'; ctx.beginPath(); road.forEach(p => ctx.lineTo(p[0], p[1])); ctx.fill();
-    ctx.fillStyle = 'rgba(255,214,120,.8)';
-    for (let z = Math.ceil(camZ / 60) * 60; z < camZ + 1400; z += 60) {
-      const a = cam.p(-1.5, 0, z), b = cam.p(1.5, 0, z), c = cam.p(1.5, 0, z + 26), e = cam.p(-1.5, 0, z + 26);
-      if (a[2] < 6) continue;
-      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(e[0], e[1]); ctx.fill();
-    }
-  }
-  const CELL = 110, cols = Math.ceil(lerp(15, 6, kDown));
-  const r0 = Math.floor((camZ - lerp(1100, 0, kDown)) / CELL), r1 = Math.ceil((camZ + lerp(1400, 3400, kDown)) / CELL);
-  const boxes = [];
-  for (let r = r0; r <= r1; r++) {
-    if (((r % 6) + 6) % 6 === 0) continue;
-    for (let c = -cols; c < cols; c++) {
-      const hh = hash(r * 91.3 + c * 17.9);
-      const x0 = (c >= 0 ? A + c * CELL : -A + c * CELL) + 8, x1 = x0 + CELL - 16;
-      const near = (c === 0 || c === -1) ? 1.15 : Math.abs(c) < 3 ? 1 : .6;
-      boxes.push({ x0, x1, z0: r * CELL + 8, z1: r * CELL + CELL - 8, h: (60 + Math.pow(hh, 2.2) * 540) * near, seed: hh });
-    }
-  }
-  drawBoxes(cam, boxes, { shadow: [22, 27, 40], lit: [48, 52, 72], top: [52, 62, 88], sun: [-.3, -.9], fog: [70, 72, 100], far: 3400, edge: '126,166,255', edgeA: .35 * (1 - kDown * .6),
-    win: kDown > .45 ? { cols: ['#ffd48a', '#ffe7b0', '#9fd0ff'], dens: .45, maxZ: 2000, a: (kDown - .45) * 1.8 } : null });
-  if (kDown > .6) {
-    const k = inv(.6, 1, kDown);
-    ctx.save(); ctx.globalAlpha = k; avenueLights(cam, lt, { A, lamp: '#ffb870', far: 2600, cars: 18 }); ctx.restore();
-    ctx.save(); ctx.globalAlpha = k; heroCar(cam, lt); ctx.restore();
-    FX.police = inv(10.5, 12, lt);
-  }
-  ctx.save(); ctx.globalAlpha = kDown * .5; ctx.fillStyle = vgrad(cam.hor - 200, cam.hor + 60, [[0, 'rgba(242,163,107,0)'], [1, 'rgba(242,163,107,.35)']]); ctx.fillRect(0, cam.hor - 200, W, 260); ctx.restore();
-  if (lt < 3.4) T('THE WORLD, SO FAR', W / 2, 160, { f: F.pix, s: 26, c: '#f5d547', a: win(lt, .2, 3.3, .3, .4), shadow: '#000', sx: 3, sy: 3 });
-  if (lt > 7.8) {
-    const k = eo3(inv(8.4, 9.6, lt));
-    T('OCTOBER 22, 2001', W / 2, 250, { f: F.mono, s: 32, ls: 12, c: '#ffd9b0', a: inv(7.8, 8.3, lt) });
-    T('GRAND THEFT AUTO III', W / 2, 440, { s: lerp(250, 200, k), ls: lerp(40, 6, k), a: inv(8.4, 8.55, lt), c: '#fff', glow: 'rgba(0,0,0,.6)', gb: 30 });
-  }
-  const chip = (txt, y, a0) => {
-    const a = win(lt, a0, sc.d - .1, .4, .5); if (!a) return;
-    const w = measure(txt, { f: F.mono, s: 22, ls: 3 }) + 40;
-    ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(8,10,18,.75)'; rrect(W - 100 - w, y - 24, w, 48, 4); ctx.fill(); ctx.restore();
-    T(txt, W - 100 - w + 20, y + 1, { f: F.mono, s: 22, ls: 3, al: 'left', c: '#cfdcff', a });
-  };
-  chip('BEST-SELLING GAME OF 2001 IN THE US', 600, 11.6);
-  chip('DELAYED 3 WEEKS AND REWORKED AFTER 9/11', 662, 12.2);
-}
-
-function sVC(lt, sc) {
-  const hor = 640, drift = eio(inv(0, sc.d, lt));
-  ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(1 + .06 * drift, 1 + .06 * drift); ctx.translate(-W / 2, -H / 2 + drift * 20);
-  const sky = vgrad(0, hor, [[0, '#12002e'], [.45, '#4b0b63'], [.78, '#ff2f8e'], [1, '#ff9a3c']]);
-  ctx.fillStyle = sky; ctx.fillRect(-100, -100, W + 200, hor + 100);
-  for (let i = 0; i < 90; i++) rect(hash(i) * W, hash(i + 50) * 360, 2, 2, '#fff', (.4 + .6 * Math.abs(Math.sin(lt * 2 + i))) * .7);
-  const cy = lerp(470, 560, inv(0, sc.d, lt)), r = 250;
-  glowDisc(W / 2, cy, 620, 'rgba(255,90,160,.35)');
-  ctx.save(); ctx.beginPath(); ctx.arc(W / 2, cy, r, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = vgrad(cy - r, cy + r, [[0, '#ffe45e'], [.55, '#ff7a5c'], [1, '#ff2f8e']]); ctx.fillRect(W / 2 - r, cy - r, 2 * r, 2 * r);
-  ctx.fillStyle = sky;
-  for (let i = 0; i < 9; i++) { const y = cy + 10 + i * 30 + ((lt * 18) % 30), hgt = 3 + i * 2.4; ctx.fillRect(W / 2 - r, y, 2 * r, hgt); }
-  ctx.restore();
-  ctx.fillStyle = vgrad(hor, H, [[0, '#2a0845'], [1, '#07000f']]); ctx.fillRect(-100, hor, W + 200, H - hor + 100);
-  ctx.save(); ctx.globalAlpha = .55;
-  for (let i = 0; i < 26; i++) {
-    const y = hor + 6 + i * i * .9, w = (260 - i * 6) * (1 + .1 * Math.sin(lt * 3 + i));
-    ctx.fillStyle = i % 2 ? '#ffb45e' : '#ff4f9a'; ctx.fillRect(W / 2 - w / 2 + Math.sin(lt * 2 + i) * 12, y, w, 2 + i * .15);
-  }
-  ctx.restore();
-  ctx.save(); ctx.strokeStyle = 'rgba(255,79,179,.55)'; ctx.lineWidth = 2; ctx.beginPath();
-  for (let i = -24; i <= 24; i++) { ctx.moveTo(W / 2 + i * 24, hor); ctx.lineTo(W / 2 + i * 260, H + 100); }
-  for (let k = 0; k < 14; k++) { const z = ((k + lt * 1.6) % 14) / 14, y = hor + Math.pow(z, 2.4) * (H - hor); ctx.moveTo(-100, y); ctx.lineTo(W + 100, y); }
-  ctx.stroke(); ctx.restore();
-  rect(-100, hor - 2, W + 200, 3, '#ffd0e8');
-  // coastal highway traffic at the horizon
-  for (let i = 0; i < 10; i++) {
-    const x = ((hash(i) * 2400 + lt * (i % 2 ? 260 : -200)) % 2400 + 2400) % 2400 - 240;
-    light(x, hor - 6, 14, i % 2 ? '#ff3a6a' : '#fff0d0', .9);
-  }
-  const sw = Math.sin(lt * 1.3);
-  palm(170, H + 20, 760, .12, sw, '#0b0014');
-  palm(420, H + 40, 560, -.05, sw * .8 + 1, '#0b0014');
-  palm(1750, H + 20, 820, -.14, sw * .9 + 2, '#0b0014');
-  palm(1530, H + 60, 520, .06, sw + 3, '#0b0014');
-  ctx.restore();
-  flare(W / 2, cy, .7, '#ff9ad0');
-  const ign = lt < 1.07 ? 0 : lt < 1.9 ? (hash(Math.floor(lt * 22)) > .45 ? 1 : .15) : 1;
-  const up = eio(inv(5.0, 6.0, lt));
-  ctx.save(); ctx.translate(W / 2, lerp(360, 250, up)); ctx.scale(lerp(1, .78, up), lerp(1, .78, up));
-  T('Vice City', 0, 0, { f: F.script, s: 300, c: '#ffd6f0', glow: '#ff2fa8', gb: 60, a: ign, stroke: '#ff4fb3', lw: 10 });
-  T('Vice City', 0, 0, { f: F.script, s: 300, c: '#fff4fb', glow: '#ff4fb3', gb: 22, a: ign });
-  if (lt > 2.0) {
-    ctx.save(); ctx.globalAlpha = inv(2.0, 2.4, lt); ctx.transform(1, 0, -.18, 1, 0, 0);
-    ctx.font = `150px ${F.disp}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '12px';
-    const cg = ctx.createLinearGradient(0, 110, 0, 250);
-    cg.addColorStop(0, '#f2fbff'); cg.addColorStop(.48, '#6fb6ff'); cg.addColorStop(.52, '#20245a'); cg.addColorStop(1, '#ff8fd2');
-    ctx.lineWidth = 6; ctx.strokeStyle = '#1a0526'; ctx.strokeText('1986', 30, 190);
-    ctx.fillStyle = cg; ctx.fillText('1986', 30, 190); ctx.restore();
-  }
-  ctx.restore();
-  if (lt > 10.4) {
-    const a = inv(10.4, 10.9, lt);
-    const st = ['FLASH FM', 'FEVER 105', 'V-ROCK', 'WAVE 103', 'EMOTION 98.3', 'WILDSTYLE', 'K-CHAT', 'VCPR', 'ESPANTOSO'];
-    const cur = st[Math.floor((lt - 10.4) * 2.2) % st.length];
-    ctx.save(); ctx.globalAlpha = a;
-    ctx.fillStyle = '#12091a'; rrect(W / 2 - 330, 640, 660, 130, 14); ctx.fill();
-    ctx.strokeStyle = '#3d2a4d'; ctx.lineWidth = 4; ctx.stroke();
-    ctx.fillStyle = '#062a2a'; rrect(W / 2 - 290, 665, 580, 80, 6); ctx.fill();
-    ctx.restore();
-    T(cur, W / 2, 707, { f: F.pix, s: 40, c: '#5cffe4', glow: '#1effd0', gb: 18, a });
-  }
-}
-
-function sSA(lt, sc) {
-  ctx.fillStyle = vgrad(0, H, [[0, '#140d06'], [.6, '#4a2e10'], [1, '#c8872f']]); ctx.fillRect(0, 0, W, H);
-  glowDisc(1300, 900, 900, 'rgba(255,190,90,.25)');
-  const zK = eio(inv(7.2, 8.2, lt)) * (1 - eio(inv(11.6, 12.8, lt)));
-  const z = (1 + .1 * inv(0, sc.d, lt)) * (1 + 1.5 * zK), mcx = 1270, mcy = 540, LSx = 170, LSy = 190;
-  ctx.save(); ctx.translate(lerp(mcx, W / 2, zK), lerp(mcy, H / 2, zK)); ctx.scale(z, z * .88); ctx.rotate(-.04); ctx.translate(-LSx * zK, -LSy * zK);
-  ctx.beginPath(); saLand.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.closePath();
-  ctx.fillStyle = 'rgba(30,20,8,.82)'; ctx.fill();
-  ctx.strokeStyle = 'rgba(255,200,110,.7)'; ctx.lineWidth = 3; ctx.stroke();
-  ctx.save(); ctx.clip();
-  ctx.strokeStyle = 'rgba(255,200,110,.07)'; ctx.lineWidth = 1; ctx.beginPath();
-  for (let i = -500; i < 500; i += 30) { ctx.moveTo(i, -500); ctx.lineTo(i, 500); ctx.moveTo(-500, i); ctx.lineTo(500, i); }
-  ctx.stroke();
-  glowDisc(200, -120, 300, 'rgba(230,160,70,.25)');
-  glowDisc(-360, 60, 180, 'rgba(70,140,200,.25)');
-  for (let i = 0; i < 40; i++) { rect(LSx - 60 + hash(i) * 120, LSy - 50 + hash(i + 4) * 100, 6, 6, '#ffd08a', .25 + .4 * hash(i + 8)); }
-  ctx.restore();
-  const cities = [
-    { n: 'LOS SANTOS', x: LSx, y: LSy, c: '#7bd05b', t: 1.4 },
-    { n: 'SAN FIERRO', x: -330, y: -20, c: '#9ad7ff', t: 2.0 },
-    { n: 'LAS VENTURAS', x: 200, y: -230, c: '#ffcf5a', t: 2.6 },
-  ];
-  [[0, 1], [1, 2], [2, 0]].forEach(([a, b], i) => {
-    const A = cities[a], B = cities[b], p = eio(inv(2.8 + i * .5, 4.2 + i * .5, lt));
-    if (!p) return;
-    const mx = (A.x + B.x) / 2 + (i === 1 ? -80 : 60), my = (A.y + B.y) / 2 + (i === 0 ? 80 : -40);
-    ctx.strokeStyle = 'rgba(255,220,150,.75)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); ctx.beginPath();
-    for (let s = 0; s <= 40 * p; s++) { const u = s / 40; ctx.lineTo((1 - u) ** 2 * A.x + 2 * (1 - u) * u * mx + u * u * B.x, (1 - u) ** 2 * A.y + 2 * (1 - u) * u * my + u * u * B.y); }
-    ctx.stroke(); ctx.setLineDash([]);
-  });
-  const ca = inv(4.5, 5.0, lt);
-  ctx.save(); ctx.globalAlpha = ca; ctx.fillStyle = 'rgba(255,220,160,.9)';
-  ctx.beginPath(); ctx.moveTo(-300, 210); ctx.lineTo(-262, 150); ctx.lineTo(-224, 210); ctx.fill(); ctx.restore();
-  T('MT. CHILIAD', -262, 240, { f: F.mono, s: 16, ls: 3, c: '#ffe0b0', a: ca });
-  cities.forEach(c => {
-    const a = eoB(inv(c.t, c.t + .4, lt)); if (!a) return;
-    light(c.x, c.y, 70 * (1 + .3 * Math.sin(lt * 4 + c.x)), c.c, a * .8);
-    ctx.fillStyle = c.c; ctx.beginPath(); ctx.arc(c.x, c.y, 11 * a, 0, Math.PI * 2); ctx.fill();
-    T(c.n, c.x, c.y + 44, { f: F.mono, s: 22, ls: 5, w: 600, c: '#fff', a: inv(c.t + .1, c.t + .5, lt) });
-  });
-  if (zK > 0) T('GROVE STREET', LSx + 40, LSy - 40, { f: F.mono, s: 14, ls: 4, al: 'left', c: '#7bd05b', a: zK });
-  ctx.restore();
-  for (let i = 0; i < 70; i++) {
-    const x = (hash(i) * W + lt * (20 + hash(i + 3) * 40)) % W, y = (hash(i + 9) * H + Math.sin(lt + i) * 20);
-    rect(x, y, 3, 3, '#ffd9a0', .25 + .25 * Math.sin(lt * 2 + i));
-  }
-  const ta = 1 - zK;
-  const k = eoB(inv(1.0, 1.45, lt));
-  ctx.save(); ctx.globalAlpha = inv(1.0, 1.1, lt) * ta;
-  ctx.translate(lerp(-120, 0, k), 0);
-  T('SAN', 130, 330, { s: 210, al: 'left', c: '#fff4e0', shadow: 'rgba(0,0,0,.45)', sx: 8, sy: 8 });
-  T('ANDREAS', 130, 535, { s: 210, al: 'left', c: '#fff4e0', shadow: 'rgba(0,0,0,.45)', sx: 8, sy: 8 });
-  ctx.restore();
-  T('1992', 136, 690, { s: 96, al: 'left', ls: 10, c: '#ffcf5a', a: inv(1.6, 2.0, lt) * ta });
-  rect(136, 760, 260 * eo3(inv(1.8, 2.6, lt)), 10, '#3fae4a', ta);
-  if (lt > 7.7 && lt < 12) {
-    const a = win(lt, 7.7, 11.8, .35, .5);
-    rect(0, 0, W, H, '#0a0703', a * .66);
-    const kk = eo3(inv(7.9, 9.0, lt));
-    T('“Ah shit, here we go again.”', W / 2, H / 2 - 30, { f: F.ui, st: 'italic', w: 800, s: lerp(118, 104, kk), c: '#fff', a, glow: 'rgba(0,0,0,.8)', gb: 30 });
-    T('CARL “CJ” JOHNSON, BACK ON GROVE STREET', W / 2, H / 2 + 70, { f: F.mono, s: 26, ls: 6, c: '#7bd05b', a: a * inv(8.5, 9.0, lt) });
-  }
-}
-
-function sPocket(lt, sc) {
-  rect(0, 0, W, H, '#101015');
-  ctx.save(); ctx.fillStyle = '#1d1c26';
-  for (let x = 0; x < W; x += 28) for (let y = 0; y < H; y += 28) {
-    const r = 3 + 5 * (.5 + .5 * Math.sin(x * .004 + y * .003 + lt * 1.5));
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-  T('MEANWHILE, IN YOUR POCKET', W / 2, 180, { s: 96, ls: 6, a: inv(0, .4, lt) });
-  const cards = [
-    ['GAME BOY ADVANCE', '2004', 'GTA', 'ADVANCE', '#8a6bff'],
-    ['PSP', '2005', 'LIBERTY CITY', 'STORIES', '#39b6ff'],
-    ['PSP', '2006', 'VICE CITY', 'STORIES', '#ff4fa3'],
-    ['NINTENDO DS', '2009', 'CHINATOWN', 'WARS', '#ffc93c'],
-  ];
-  cards.forEach((c, i) => {
-    const k = eoB(inv(.3 + i * .45, .8 + i * .45, lt)); if (k <= 0) return;
-    const cx = 360 + i * 400, cy = 570 + Math.sin(lt * 2 + i) * 6;
-    ctx.save(); ctx.translate(cx, cy); ctx.scale(k, 1); ctx.rotate((i - 1.5) * .02);
-    ctx.fillStyle = 'rgba(0,0,0,.4)'; rrect(-172, -222, 360, 470, 18); ctx.fill();
-    ctx.fillStyle = '#16151d'; rrect(-180, -235, 360, 470, 18); ctx.fill();
-    ctx.strokeStyle = c[4]; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = c[4]; ctx.fillRect(-180, 170, 360, 18);
-    const sh = ctx.createLinearGradient(-180, -235, 180, 235); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(.5 + .4 * Math.sin(lt * 1.5 + i), 'rgba(255,255,255,.08)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = sh; rrect(-180, -235, 360, 470, 18); ctx.fill();
-    ctx.restore();
-    light(cx, cy + 180, 160, c[4], .35 * k);
-    if (k > .6) {
-      const a = inv(.6, 1, k);
-      T(c[0], cx, cy - 190, { f: F.mono, s: 19, ls: 4, c: c[4], a });
-      T(c[1], cx, cy - 70, { s: 140, c: '#fff', a });
-      T(c[2], cx, cy + 55, { s: 48, ls: 2, c: '#fff', a });
-      T(c[3], cx, cy + 110, { s: 48, ls: 2, c: c[4], a });
-    }
-  });
-}
 
 function statue(x, by, s, col) {
   ctx.save(); ctx.translate(x, by); ctx.scale(s, s); ctx.fillStyle = col;
@@ -1023,212 +529,245 @@ function statue(x, by, s, col) {
   ctx.save(); ctx.translate(-20, -330); ctx.rotate(.5); ctx.fillRect(-8, 0, 16, 90); ctx.restore();
   ctx.restore();
 }
-function sIV(lt, sc) {
+
+
+/* =====================================================================
+   ART — full-frame, text-free backdrops for each chapter
+   ===================================================================== */
+const skyBand = makeSkyline(91, 90, -200, 2300, 30, 150, 30, 90);
+const skyLS = makeSkyline(41, 60, 200, 1700, 60, 330, 40, 100);
+const houses = [];
+for (let i = 0; i < 14; i++) houses.push({ x: 560 + i * 110 + hash(i) * 20, w: 90 + hash(i + 3) * 30, h: 60 + hash(i + 5) * 40 });
+
+function artIntro(lt) {
+  ctx.fillStyle = vgrad(0, 800, [[0, '#0c0922'], [.45, '#34195a'], [.8, '#b8436f'], [1, '#ff9a5a']]); ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 120; i++) rect(hash(i) * W, hash(i + 50) * 420, 2, 2, '#fff', (.3 + .7 * Math.abs(Math.sin(lt * 1.5 + i))) * .6);
+  glowDisc(1250, 790, 900, 'rgba(255,150,90,.45)');
+  for (let i = 0; i < 6; i++) {
+    const y = 380 + i * 60, x = ((hash(i) * W + lt * (12 + i * 4)) % (W + 700)) - 350;
+    ctx.save(); ctx.globalAlpha = .18 + hash(i + 5) * .15; ctx.fillStyle = i % 2 ? '#ff9ac0' : '#ffc9a0';
+    ctx.beginPath(); ctx.ellipse(x, y, 300 + hash(i) * 220, 9 + hash(i + 2) * 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+}
+
+function artDundee(lt) {
+  const push = eio(inv(0, 20, lt)), wx = 1250, wy = 470;
+  ctx.save(); ctx.translate(wx, wy); ctx.scale(1 + .12 * push, 1 + .12 * push); ctx.translate(-wx, -wy);
+  ctx.fillStyle = vgrad(0, H, [[0, '#04060c'], [.7, '#0b1220'], [1, '#05070b']]); ctx.fillRect(-200, -200, W + 400, H + 400);
+  glowDisc(900, 180, 900, 'rgba(90,110,160,.14)');
+  for (const t of tenements) {
+    const top = 780 - t.h;
+    ctx.fillStyle = '#090b11'; ctx.fillRect(t.x, top, t.w, t.h + 400);
+    ctx.beginPath(); ctx.moveTo(t.x - 6, top); ctx.lineTo(t.x + t.w / 2, top - 70); ctx.lineTo(t.x + t.w + 6, top); ctx.fill();
+    for (let c = 0; c < 2; c++) { const cx = t.x + t.w * (.2 + c * .55); ctx.fillRect(cx, top - 90, 22, 70); for (let p = 0; p < 3; p++) ctx.fillRect(cx + 2 + p * 7, top - 104, 4, 16); }
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
+      const x = t.x + 22 + c * (t.w - 44) / 3, y = top + 40 + r * 110;
+      if (hash(t.i * 17 + r * 3 + c) > .86) rect(x, y, 40, 62, '#ffcf8a', .25); else rect(x, y, 40, 62, '#141824');
+    }
+  }
+  const flick = .8 + .2 * Math.sin(lt * 30) * Math.sin(lt * 7);
+  glowDisc(wx, wy, 380, 'rgba(255,190,120,.4)');
+  rect(wx - 55, wy - 70, 110, 140, '#ffcf8a');
+  rect(wx - 42, wy - 20, 38, 30, '#4a86ff', flick); rect(wx + 6, wy - 16, 34, 26, '#4a86ff', flick * .9);
+  rect(wx - 48, wy + 12, 96, 10, '#1a120a'); rect(wx - 30, wy - 60, 8, 50, '#1a120a');
+  ctx.strokeStyle = '#0a0b10'; ctx.lineWidth = 6; ctx.strokeRect(wx - 55, wy - 70, 110, 140);
+  ctx.beginPath(); ctx.moveTo(wx, wy - 70); ctx.lineTo(wx, wy + 70); ctx.moveTo(wx - 55, wy); ctx.lineTo(wx + 55, wy); ctx.stroke();
+  ctx.fillStyle = '#07080c'; ctx.fillRect(1634, 240, 12, 600); ctx.fillRect(1600, 232, 60, 14);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const cg = ctx.createLinearGradient(0, 246, 0, 800); cg.addColorStop(0, 'rgba(255,170,90,.35)'); cg.addColorStop(1, 'rgba(255,170,90,0)');
+  ctx.fillStyle = cg; ctx.beginPath(); ctx.moveTo(1620, 246); ctx.lineTo(1640, 246); ctx.lineTo(1860, 800); ctx.lineTo(1400, 800); ctx.fill();
+  ctx.restore();
+  light(1630, 250, 120, '#ffb060', .95);
+  ctx.restore();
+  rain(lt, 260, .2);
+}
+
+function artPixel(lt) {
+  const carX = 40 + lt * 62;
+  drawPixCity(carX - 300, 6 - 135, lt, carX, 6, -1);
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.14)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2); ctx.restore();
+  rect(0, 0, W, H, '#0a0a14', .25);
+  const wanted = Math.min(4, 1 + Math.floor(lt / 3));
+  for (let i = 0; i < 4; i++) star(1500 + i * 64, 110, 24, i < wanted ? '#f5d547' : 'rgba(255,255,255,.2)');
+}
+
+function art99(lt) {
+  const P = [
+    () => { rect(0, 0, 640, H, '#0c0b09'); glowDisc(320, 700, 520, 'rgba(226,179,60,.2)'); drawSkyline(sky98, 800, '#e2b33c', -lt * 6); },
+    () => {
+      rect(0, 0, 640, H, '#efe8da'); const r = 230 + Math.sin(lt * 2) * 6;
+      [['#1d3f94', r], ['#efe8da', r * .68], ['#c8102e', r * .4]].forEach(([c, rr]) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(320, 420, rr, 0, Math.PI * 2); ctx.fill(); });
+      T('LONDON', 320, 740, { s: 90, ls: 10, c: '#1d3f94' });
+    },
+    () => {
+      ctx.fillStyle = vgrad(0, H, [[0, '#12001f'], [1, '#2d0046']]); ctx.fillRect(0, 0, 640, H);
+      ctx.save(); ctx.strokeStyle = 'rgba(40,240,255,.3)'; ctx.lineWidth = 2; ctx.beginPath();
+      for (let i = -8; i <= 8; i++) { ctx.moveTo(320 + i * 20, 460); ctx.lineTo(320 + i * 140, H); }
+      for (let k = 0; k < 12; k++) { const z = ((k + lt * 1.4) % 12) / 12, y = 460 + Math.pow(z, 2.2) * 620; ctx.moveTo(0, y); ctx.lineTo(640, y); }
+      ctx.stroke(); ctx.restore(); rect(0, 456, 640, 4, '#ff3bd4');
+      T('ANYWHERE CITY', 320, 300, { s: 70, ls: 6, c: '#28f0ff', glow: 'rgba(40,240,255,.7)', gb: 26 });
+    },
+  ];
+  P.forEach((fn, i) => { ctx.save(); ctx.beginPath(); ctx.rect(i * 640, 0, 640, H); ctx.clip(); ctx.translate(i * 640, 0); fn(); ctx.restore(); });
+}
+
+function art3(lt) {
+  const camZ = 200 + lt * 70;
+  const cam = cam3(Math.sin(lt * .3) * 8, 46, camZ, Math.sin(lt * .2) * .03, 1.5 * Math.PI / 180);
+  sky3(cam, [[0, '#0b1224'], [.55, '#33466f'], [.85, '#c77a5a'], [1, '#f2a36b']], .1, '#ffd0a0', 0, 'rgba(255,170,110,.4)');
+  ctx.fillStyle = '#10141d'; ctx.fillRect(0, cam.hor, W, H);
+  const A = 50, CELL = 110, boxes = [];
+  for (let r = Math.floor(camZ / CELL) - 1; r <= Math.ceil((camZ + 3400) / CELL); r++) {
+    if (((r % 6) + 6) % 6 === 0) continue;
+    for (let c = -6; c < 6; c++) {
+      const hh = hash(r * 91.3 + c * 17.9), x0 = (c >= 0 ? A + c * CELL : -A + c * CELL) + 8;
+      boxes.push({ x0, x1: x0 + CELL - 16, z0: r * CELL + 8, z1: r * CELL + CELL - 8, h: (60 + Math.pow(hh, 2.2) * 540) * ((c === 0 || c === -1) ? 1.15 : .8), seed: hh });
+    }
+  }
+  drawBoxes(cam, boxes, { shadow: [22, 27, 40], lit: [48, 52, 72], top: [52, 62, 88], sun: [-.3, -.9], fog: [70, 72, 100], far: 3400, edge: '126,166,255', edgeA: .15,
+    win: { cols: ['#ffd48a', '#ffe7b0', '#9fd0ff'], dens: .45, maxZ: 2200, a: 1 } });
+  avenueLights(cam, lt, { A, lamp: '#ffb870', far: 2600, cars: 18 });
+}
+function sky3(cam, stops, sunAz, sunCol, sunR, glow) {
+  const hor = cam.hor;
+  ctx.fillStyle = vgrad(hor - 760, hor, stops); ctx.fillRect(0, 0, W, Math.max(0, hor) + 2);
+  if (sunAz != null && hor > -200) {
+    const sx = cam.az(sunAz);
+    glowDisc(sx, hor - 30, 900, glow);
+    if (sunR) { ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sx, hor - sunR * .55, sunR, 0, Math.PI * 2); ctx.fill(); }
+    return sx;
+  }
+  return null;
+}
+
+function artVC(lt) {
+  const hor = 640;
+  const sky = vgrad(0, hor, [[0, '#12002e'], [.45, '#4b0b63'], [.78, '#ff2f8e'], [1, '#ff9a3c']]);
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, hor);
+  for (let i = 0; i < 90; i++) rect(hash(i) * W, hash(i + 50) * 360, 2, 2, '#fff', (.4 + .6 * Math.abs(Math.sin(lt * 2 + i))) * .7);
+  const cx = 1180, cy = 520, r = 230;
+  glowDisc(cx, cy, 620, 'rgba(255,90,160,.35)');
+  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = vgrad(cy - r, cy + r, [[0, '#ffe45e'], [.55, '#ff7a5c'], [1, '#ff2f8e']]); ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+  ctx.fillStyle = sky;
+  for (let i = 0; i < 9; i++) ctx.fillRect(cx - r, cy + 10 + i * 30 + ((lt * 18) % 30), 2 * r, 3 + i * 2.4);
+  ctx.restore();
+  drawSkyline(skyVI, hor, '#2a0a3a', 300, 'rgba(120,255,240,.9)', .45);
+  ctx.fillStyle = vgrad(hor, H, [[0, '#2a0845'], [1, '#07000f']]); ctx.fillRect(0, hor, W, H - hor);
+  ctx.save(); ctx.globalAlpha = .55;
+  for (let i = 0; i < 26; i++) { const y = hor + 6 + i * i * .9, w = (240 - i * 6) * (1 + .1 * Math.sin(lt * 3 + i)); ctx.fillStyle = i % 2 ? '#ffb45e' : '#ff4f9a'; ctx.fillRect(cx - w / 2 + Math.sin(lt * 2 + i) * 12, y, w, 2 + i * .15); }
+  ctx.restore();
+  const sw = Math.sin(lt * 1.3);
+  palm(760, 760, 560, .1, sw, '#0b0014'); palm(1880, 780, 700, -.14, sw + 2, '#0b0014'); palm(940, 780, 420, -.06, sw + 1, '#0b0014');
+  flare(cx, cy, .6, '#ff9ad0');
+}
+
+function artSA(lt) {
+  ctx.fillStyle = vgrad(0, 780, [[0, '#1b1030'], [.45, '#6a3050'], [.8, '#e0703a'], [1, '#ffc070']]); ctx.fillRect(0, 0, W, H);
+  glowDisc(1250, 700, 900, 'rgba(255,170,90,.5)');
+  ctx.fillStyle = '#ffd890'; ctx.beginPath(); ctx.arc(1250, 690, 140, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#5a2a40'; ctx.beginPath(); ctx.moveTo(0, 780);
+  for (let x = 0; x <= W; x += 30) ctx.lineTo(x, 610 - 90 * Math.sin(x * .003 + .6) - 30 * Math.sin(x * .012));
+  ctx.lineTo(W, 780); ctx.fill();
+  T('VINEWOOD', 560, 540, { s: 40, ls: 16, c: '#fff1e0', a: .85 });
+  drawSkyline(skyLS, 780, '#2a1422', 150, 'rgba(255,210,150,.9)', .5);
+  ctx.fillStyle = '#1a0c16';
+  for (const h of houses) { ctx.fillRect(h.x, 780 - h.h, h.w, h.h + 20); ctx.beginPath(); ctx.moveTo(h.x - 8, 780 - h.h); ctx.lineTo(h.x + h.w / 2, 780 - h.h - 34); ctx.lineTo(h.x + h.w + 8, 780 - h.h); ctx.fill(); }
+  const sw = Math.sin(lt * 1.1);
+  [620, 900, 1080, 1760, 1880].forEach((x, i) => palm(x, 790, 380 + hash(i) * 260, (hash(i + 3) - .5) * .3, sw + i, '#140812'));
+  ctx.save(); ctx.strokeStyle = 'rgba(20,8,18,.9)'; ctx.lineWidth = 2;
+  for (let w = 0; w < 3; w++) { ctx.beginPath(); ctx.moveTo(0, 300 + w * 14); ctx.quadraticCurveTo(700, 380 + w * 14, 1400, 320 + w * 14); ctx.quadraticCurveTo(1700, 300, W, 330 + w * 14); ctx.stroke(); }
+  ctx.restore();
+  for (let i = 0; i < 70; i++) { const x = (hash(i) * W + lt * (20 + hash(i + 3) * 40)) % W, y = hash(i + 9) * 800 + Math.sin(lt + i) * 20; rect(x, y, 3, 3, '#ffd9a0', .2 + .2 * Math.sin(lt * 2 + i)); }
+}
+
+function artPocket(lt) {
+  rect(0, 0, W, H, '#101015');
+  ctx.save(); ctx.fillStyle = '#1d1c26';
+  for (let x = 0; x < W; x += 28) for (let y = 0; y < H; y += 28) { const r = 3 + 5 * (.5 + .5 * Math.sin(x * .004 + y * .003 + lt * 1.5)); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  glowDisc(1300, 450, 800, 'rgba(160,120,255,.18)');
+}
+
+function artIV(lt) {
   const camZ = 200 + lt * 60;
-  const cam = cam3(Math.sin(lt * .4) * 6, 18 + Math.sin(lt * 1.7) * .6, camZ, Math.sin(lt * .3) * .025, 3 * Math.PI / 180);
+  const cam = cam3(Math.sin(lt * .4) * 6, 40, camZ, Math.sin(lt * .3) * .025, 1.5 * Math.PI / 180);
   ctx.fillStyle = vgrad(cam.hor - 700, cam.hor, [[0, '#07090c'], [.6, '#1a2029'], [1, '#6a5a4a']]); ctx.fillRect(0, 0, W, cam.hor + 2);
   glowDisc(W / 2, cam.hor, 1000, 'rgba(255,150,80,.18)');
   drawSkyline(skyIVfar, cam.hor + 4, '#1a1f26', -lt * 6 - 200, 'rgba(255,210,150,.8)', .3);
-  statue(300, cam.hor + 6, .42, '#141a20');
+  statue(1480, cam.hor + 6, .5, '#141a20');
   ctx.fillStyle = '#0b0d11'; ctx.fillRect(0, cam.hor, W, H);
-  const A = 46;
-  const road = [cam.p(-A, 0, camZ + 8), cam.p(A, 0, camZ + 8), cam.p(A, 0, camZ + 3000), cam.p(-A, 0, camZ + 3000)];
-  ctx.fillStyle = '#121519'; ctx.beginPath(); road.forEach(p => ctx.lineTo(p[0], p[1])); ctx.fill();
-  ctx.fillStyle = 'rgba(230,230,210,.35)';
-  for (let z = Math.ceil(camZ / 50) * 50; z < camZ + 1200; z += 50) {
-    const a = cam.p(-1, 0, z), b = cam.p(1, 0, z), c = cam.p(1, 0, z + 22), e = cam.p(-1, 0, z + 22);
-    if (a[2] < 6) continue;
-    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(e[0], e[1]); ctx.fill();
-  }
-  const CELL = 100, boxes = [];
+  const A = 46, CELL = 100, boxes = [];
   for (let r = Math.floor(camZ / CELL) - 1; r <= Math.ceil((camZ + 3000) / CELL); r++) {
     if (((r % 7) + 7) % 7 === 0) continue;
     for (let c = -6; c < 6; c++) {
-      const hh = hash(r * 53.1 + c * 29.7);
-      const x0 = (c >= 0 ? A + c * CELL : -A + c * CELL) + 6, x1 = x0 + CELL - 12;
-      boxes.push({ x0, x1, z0: r * CELL + 6, z1: r * CELL + CELL - 6, h: 70 + Math.pow(hh, 1.8) * 480 * ((c === 0 || c === -1) ? 1.1 : .8), seed: hh });
+      if (c > 1 && r * CELL < camZ + 1400) continue;
+      const hh = hash(r * 53.1 + c * 29.7), x0 = (c >= 0 ? A + c * CELL : -A + c * CELL) + 6;
+      boxes.push({ x0, x1: x0 + CELL - 12, z0: r * CELL + 6, z1: r * CELL + CELL - 6, h: 70 + Math.pow(hh, 1.8) * 480 * ((c === 0 || c === -1) ? 1.1 : .8), seed: hh });
     }
   }
   drawBoxes(cam, boxes, { shadow: [16, 19, 24], lit: [16, 19, 24], top: [22, 26, 32], fog: [58, 56, 56], far: 2600, fogPow: .8,
     win: { cols: ['#ffcc80', '#ffdca0', '#ff9f60', '#cfe0ff'], dens: .5, maxZ: 2200, a: 1 } });
-  ctx.save(); ctx.fillStyle = vgrad(cam.hor - 260, cam.hor + 40, [[0, 'rgba(90,80,75,0)'], [1, 'rgba(90,80,75,.55)']]); ctx.fillRect(0, cam.hor - 260, W, 300); ctx.restore();
   avenueLights(cam, lt, { A, lamp: '#ffa050', far: 2600, cars: 26, wet: true });
-  heroCar(cam, lt, [14, 16, 20]);
-  FX.police = .7;
-  rain(lt, 340, .22, 1.2);
-  for (let i = 0; i < 18; i++) {
-    const x = hash(i * 3.3) * W, y = hash(i * 7.7) * H * .8, r = 6 + hash(i) * 14, a = win((lt + hash(i) * 6) % 6, 0, 6, .3, 1.5) * .5;
-    ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-  }
-  const sa = win(lt, 3, 9, .6, .8);
-  if (sa) {
-    ctx.save(); ctx.globalAlpha = sa; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(334, cam.hor - 200); ctx.lineTo(420, cam.hor - 290); ctx.lineTo(640, cam.hor - 290); ctx.stroke(); ctx.restore();
-    T('STATUE OF HAPPINESS', 430, cam.hor - 314, { f: F.mono, s: 20, ls: 4, al: 'left', c: '#dfe6ee', a: sa });
-    T('(YES, SHE IS HOLDING A COFFEE)', 430, cam.hor - 262, { f: F.mono, s: 18, ls: 2, al: 'left', c: '#9fb0c2', a: sa });
-  }
-  const k = eo3(inv(1.26, 2.4, lt));
-  T('APRIL 29, 2008', W / 2, 180, { f: F.mono, s: 30, ls: 12, c: '#c9d3dd', a: inv(1.0, 1.6, lt) * (1 - inv(9.6, 10, lt)) });
-  T('GRAND THEFT AUTO IV', W / 2, 290, { s: 150, ls: lerp(30, 4, k), c: '#f2f4f6', a: inv(1.26, 1.4, lt) * (1 - inv(9.6, 10, lt)), glow: 'rgba(0,0,0,.7)', gb: 30 });
-  if (lt > 10) {
-    const a = win(lt, 10, 13.2, .3, .5), v = 5e8 * eoX(inv(10, 11.6, lt));
-    rect(0, 0, W, H, '#05070a', a * .75);
-    T(money(v), W / 2, H / 2 - 40, { s: 190, c: '#fff', a });
-    T('FIRST WEEK', W / 2, H / 2 + 80, { f: F.mono, s: 30, ls: 14, c: '#9fb0c2', a });
-  }
+  rain(lt, 320, .22, 1.2);
 }
 
-function sV(lt, sc) {
-  const yaw = .55 + lt * .045;
-  const R = 1700 - lt * 14;
-  const fx = 0, fz = 0;
-  const cam = cam3(fx - Math.sin(yaw) * R, 980 - lt * 8, fz - Math.cos(yaw) * R, yaw, .44);
+function artAerial(lt, night) {
+  const yaw = .55 + lt * .04, R = 1700 - lt * 12;
+  const cam = cam3(-Math.sin(yaw) * R, 980 - lt * 8, -Math.cos(yaw) * R, yaw, .44);
   const sunAz = .78;
-  const sx = sky3(cam, [[0, '#0d1633'], [.5, '#5a2b56'], [.85, '#ff7a3a'], [1, '#ffc27a']], sunAz, '#ffd08a', 110, 'rgba(255,170,90,.5)');
-  // hills
-  ctx.fillStyle = '#3b1d33'; ctx.beginPath(); ctx.moveTo(0, cam.hor + 10);
+  const sx = night
+    ? sky3(cam, [[0, '#050716'], [.6, '#16163a'], [1, '#4a2a5a']], null)
+    : sky3(cam, [[0, '#0d1633'], [.5, '#5a2b56'], [.85, '#ff7a3a'], [1, '#ffc27a']], sunAz, '#ffd08a', 110, 'rgba(255,170,90,.5)');
+  ctx.fillStyle = night ? '#141226' : '#3b1d33'; ctx.beginPath(); ctx.moveTo(0, cam.hor + 10);
   for (let x = 0; x <= W; x += 30) { const u = x + yaw * 900; ctx.lineTo(x, cam.hor - 70 - 60 * Math.sin(u * .003 + 1) - 20 * Math.sin(u * .013)); }
   ctx.lineTo(W, cam.hor + 20); ctx.lineTo(0, cam.hor + 20); ctx.fill();
-  T('VINEWOOD', ((600 - yaw * 900) % 3000 + 3000) % 3000 - 500, cam.hor - 120, { s: 30, ls: 12, c: '#fff4e6', a: .8 });
-  ctx.fillStyle = vgrad(cam.hor, H, [[0, '#5a3040'], [1, '#1d1420']]); ctx.fillRect(0, cam.hor, W, H);
-  const CELL = 120, boxes = [], RG = 13;
-  const cr = Math.round(cam.z / CELL), cc = Math.round(cam.x / CELL);
-  for (let r = -RG * 2; r <= RG * 2; r++) for (let c = -RG * 2; c <= RG * 2; c++) {
+  ctx.fillStyle = vgrad(cam.hor, H, night ? [[0, '#1a1830'], [1, '#08070f']] : [[0, '#5a3040'], [1, '#1d1420']]); ctx.fillRect(0, cam.hor, W, H);
+  const CELL = 120, boxes = [], cr = Math.round(cam.z / CELL), cc = Math.round(cam.x / CELL);
+  for (let r = -26; r <= 26; r++) for (let c = -26; c <= 26; c++) {
     if ((r % 5 + 5) % 5 === 0 || (c % 5 + 5) % 5 === 0) continue;
-    const X = c * CELL, Z = r * CELL;
-    if (Math.hypot(X - fx, Z - fz) > 2700) continue;
-    if (Math.hypot(r - cr, c - cc) < 5) continue;
+    const X = c * CELL, Z = r * CELL, dd = Math.hypot(X, Z);
+    if (dd > 2700 || Math.hypot(r - cr, c - cc) < 5) continue;
     const hh = hash(r * 71.3 + c * 13.1), hh2 = hash(r * 7.9 + c * 91.4);
-    const dd = Math.hypot(X - fx, Z - fz);
-    const h = 25 + hh * 60 + Math.pow(Math.max(0, 1 - dd / 900), 2) * 520 * (.35 + hh2);
-    boxes.push({ x0: X + 10, x1: X + CELL - 10, z0: Z + 10, z1: Z + CELL - 10, h, seed: hh });
+    boxes.push({ x0: X + 10, x1: X + CELL - 10, z0: Z + 10, z1: Z + CELL - 10, h: 25 + hh * 60 + Math.pow(Math.max(0, 1 - dd / 900), 2) * 520 * (.35 + hh2), seed: hh });
   }
   const sun = [Math.sin(sunAz), Math.cos(sunAz)];
-  drawBoxes(cam, boxes, { shadow: [62, 50, 92], lit: [240, 156, 108], top: [170, 120, 130], sun: [-sun[0], -sun[1]], fog: [255, 170, 130], far: 4200, fogPow: 1.4, edge: '255,220,190', edgeA: .08,
-    win: { cols: ['#ffd9a0', '#fff0c8'], dens: .22, maxZ: 1700, a: .6 } });
+  if (night) drawBoxes(cam, boxes, { shadow: [22, 22, 40], lit: [22, 22, 40], top: [30, 30, 52], fog: [40, 36, 70], far: 4200, fogPow: 1.2, win: { cols: ['#ffd9a0', '#9fe8ff', '#ff9fd8'], dens: .45, maxZ: 3000, a: 1 } });
+  else drawBoxes(cam, boxes, { shadow: [62, 50, 92], lit: [240, 156, 108], top: [170, 120, 130], sun: [-sun[0], -sun[1]], fog: [255, 170, 130], far: 4200, fogPow: 1.4, edge: '255,220,190', edgeA: .08, win: { cols: ['#ffd9a0', '#fff0c8'], dens: .22, maxZ: 1700, a: .6 } });
   for (let r = -12; r <= 12; r++) for (let c = -12; c <= 12; c++) {
     if ((r % 5 + 5) % 5 !== 0 && (c % 5 + 5) % 5 !== 0) continue;
     if ((r + c) % 2) continue;
     const p = cam.p(c * CELL, 3, r * CELL); if (p[2] < 20) continue;
     light(p[0], p[1], clamp(5000 / p[2], 1, 14), '#ffc27a', .7);
   }
-  if (sx != null) flare(sx, cam.hor - 60, .5, '#ffc090');
-  const people = [
-    ['MICHAEL', 'Retired bank robber. Bored and rich.', '#3b8fd9'],
-    ['FRANKLIN', 'Hustler looking for a way up.', '#3fae4a'],
-    ['TREVOR', 'Pure, unfiltered chaos.', '#e8862a'],
-  ];
-  const out = eio(inv(6.3, 7.1, lt));
-  const sel = lt > 3.4 && lt < 6.3 ? Math.floor((lt - 3.4) / .97) % 3 : -1;
-  people.forEach(([n, desc, col], i) => {
-    const k = eoX(inv(.2 + i * .4, 1.1 + i * .4, lt)); if (!k || out >= 1) return;
-    const x = i * 640, yOff = (1 - k) * H * (i % 2 ? -1 : 1) + out * -H * (i % 2 ? 1 : -1);
-    const dim = sel < 0 || sel === i ? 1 : .35;
-    ctx.save(); ctx.beginPath();
-    ctx.moveTo(x + 60, yOff); ctx.lineTo(x + 700, yOff); ctx.lineTo(x + 580, yOff + H); ctx.lineTo(x - 60, yOff + H); ctx.closePath();
-    ctx.fillStyle = col; ctx.fill(); ctx.clip();
-    ctx.fillStyle = `rgba(0,0,0,${1 - dim})`; ctx.fillRect(x - 100, yOff, 900, H);
-    ctx.fillStyle = vgrad(yOff, yOff + H, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,.45)']]); ctx.fillRect(x - 100, yOff, 900, H);
-    T(n[0], x + 330, yOff + 470, { s: 760, c: 'rgba(255,255,255,.12)' });
-    T(n, x + 320, yOff + 620, { s: 120, ls: 6, c: '#fff' });
-    T(desc, x + 320, yOff + 700, { f: F.mono, s: 24, c: 'rgba(255,255,255,.92)' });
-    if (sel === i) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 12; ctx.stroke(); }
-    ctx.restore();
-  });
-  if (sel >= 0 && ((lt - 3.4) % .97) < .12) FX.glitch = .3;
-  if (lt > 7.4 && lt < 10.4) {
-    const k = eo3(inv(7.7, 8.9, lt)), a = inv(7.4, 7.9, lt) * (1 - inv(10, 10.3, lt));
-    T('SEPTEMBER 17, 2013', W / 2, 180, { f: F.mono, s: 30, ls: 12, c: '#fff0dc', a });
-    T('GRAND THEFT AUTO V', W / 2, 310, { s: lerp(230, 180, k), ls: lerp(30, 4, k), c: '#fff', a: a * inv(7.7, 7.8, lt), glow: 'rgba(40,10,30,.6)', gb: 30 });
-  }
-  if (lt > 10.28 && lt < 15.4) {
-    const a = win(lt, 10.28, 15.4, .3, .4);
-    const v1 = 8e8 * eoX(inv(10.4, 11.6, lt)), v2 = lerp(8e8, 1e9, eoX(inv(12.3, 13.3, lt)));
-    rect(0, 0, W, H, '#0a050a', a * .78);
-    T(money(lt < 12.3 ? v1 : v2), W / 2, 500, { s: 170, c: '#8ef08e', a, glow: 'rgba(80,220,80,.45)', gb: 30 });
-    T(lt < 12.3 ? 'DAY ONE' : 'IN THREE DAYS', W / 2, 610, { f: F.mono, s: 32, ls: 14, c: '#fff', a });
-    T('FASTEST ENTERTAINMENT PRODUCT EVER TO $1 BILLION', W / 2, 690, { f: F.mono, s: 24, ls: 5, c: '#ffc27a', a: a * inv(13.3, 13.7, lt) });
-  }
-  if (lt > 15.4 && lt < 18.86) {
-    const a = win(lt, 15.4, 18.86, .3, .4);
-    rect(0, 0, W, H, '#07040c', a * .78);
-    T('GTA ONLINE', W / 2, 470, { s: 200, ls: lerp(40, 10, eo3(inv(15.4, 16.6, lt))), c: '#fff', a });
-    T('OCTOBER 1, 2013', W / 2, 590, { f: F.mono, s: 32, ls: 14, c: '#ffc27a', a });
-  }
-  if (lt > 18.86) {
-    const a = inv(18.86, 19.2, lt) * (1 - inv(sc.d - .3, sc.d, lt));
-    rect(0, 0, W, H, '#07040c', a * .78);
-    const gens = ['PS3 · 360  2013', 'PS4 · XBOX ONE  2014', 'PC  2015', 'PS5 · SERIES X|S  2022'];
-    gens.forEach((g, i) => {
-      const on = inv(19 + i * .4, 19.3 + i * .4, lt);
-      const x = 260 + i * 470;
-      ctx.save(); ctx.globalAlpha = a * (.3 + .7 * on); ctx.strokeStyle = '#ffc27a'; ctx.lineWidth = 2; rrect(x - 210, 390, 420, 84, 42); ctx.stroke();
-      if (on) { ctx.fillStyle = `rgba(255,194,122,${.18 * on})`; ctx.fill(); } ctx.restore();
-      T(g, x, 433, { f: F.mono, s: 24, ls: 3, c: '#fff', a: a * (.3 + .7 * on) });
-    });
-    T('200 MILLION+ COPIES', W / 2, 640, { s: 170, c: '#fff', a: a * inv(20.6, 21, lt) });
-  }
+  if (night) {
+    const cols = ['#35f0ff', '#ff4fb3', '#7bff7b', '#ffd060', '#b48cff'];
+    for (let i = 0; i < 90; i++) {
+      const horiz = i % 2, line = (Math.floor(hash(i) * 10) - 5) * 5, u = ((hash(i + 7) * 5000 + lt * (80 + hash(i + 9) * 160) * (i % 3 ? 1 : -1)) % 5000 + 5000) % 5000 - 2500;
+      const p = horiz ? cam.p(u, 4, line * CELL) : cam.p(line * CELL, 4, u);
+      if (p[2] < 20) continue;
+      light(p[0], p[1], clamp(9000 / p[2], 3, 22), cols[i % cols.length], 1);
+    }
+  } else if (sx != null) flare(sx, cam.hor - 60, .5, '#ffc090');
 }
 
-function sWait(lt, sc) {
+function artWait(lt) {
   rect(0, 0, W, H, '#060608');
-  glowDisc(W / 2, H / 2, 800, 'rgba(255,255,255,.04)');
+  glowDisc(1200, 420, 800, 'rgba(255,255,255,.05)');
+  const yr = Math.floor(lerp(2014, 2025.999, inv(0, 18, lt)));
+  T(String(yr), 1250, 420, { s: 420, ls: 20, c: '#16151c' });
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   for (let i = 0; i < 34; i++) {
-    const z = (hash(i * 3.7) + lt * .1) % 1, s = lerp(.15, 2.2, z * z);
-    const x = W / 2 + (hash(i + 1) - .5) * 2600 * z, y = H / 2 + (hash(i + 2) - .5) * 1600 * z;
-    const a = Math.sin(z * Math.PI) * .5;
-    ctx.save(); ctx.translate(x, y); ctx.rotate((hash(i + 3) - .5) * 1.5 + lt * (hash(i + 4) - .5) * .6); ctx.scale(s, s); ctx.globalAlpha = a;
+    const z = (hash(i * 3.7) + lt * .08) % 1, s = lerp(.15, 2.0, z * z);
+    const x = 1150 + (hash(i + 1) - .5) * 2600 * z, y = 420 + (hash(i + 2) - .5) * 1500 * z;
+    ctx.save(); ctx.translate(x, y); ctx.rotate((hash(i + 3) - .5) * 1.5 + lt * (hash(i + 4) - .5) * .6); ctx.scale(s, s); ctx.globalAlpha = Math.sin(z * Math.PI) * .55;
     ctx.fillStyle = '#1b1a22'; ctx.fillRect(-60, -75, 120, 150); ctx.fillStyle = '#c8102e'; ctx.fillRect(-60, -75, 120, 32);
     ctx.fillStyle = '#fff'; ctx.font = `600 20px ${F.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(months[i % 12], 0, -58);
     ctx.font = `70px ${F.disp}`; ctx.fillStyle = '#d8d4de'; ctx.fillText(String(1 + Math.floor(hash(i + 5) * 28)), 0, 18);
     ctx.restore();
   }
-  const yr = Math.floor(lerp(2013, 2023.999, eio(inv(.4, 6.2, lt))));
-  const notes = { 2013: 'GTA V', 2014: 'GTA V, again (PS4)', 2015: 'GTA V, again (PC)', 2016: 'still GTA V', 2017: 'still GTA V', 2018: 'Red Dead Redemption 2', 2019: 'still GTA V', 2020: 'still GTA V', 2021: 'still GTA V', 2022: 'GTA V, again (PS5)', 2023: '...' };
-  const ya = 1 - inv(6.6, 7.0, lt);
-  if (ya > 0) {
-    const cw = 900, ch = 380, x = W / 2 - cw / 2, y = H / 2 - ch / 2 - 60;
-    ctx.save(); ctx.globalAlpha = ya; ctx.fillStyle = '#17171d'; rrect(x, y, cw, ch, 22); ctx.fill(); ctx.restore();
-    T(String(yr), W / 2, H / 2 - 50, { s: 360, ls: 20, c: '#f3efe8', a: ya });
-    rect(x, H / 2 - 62, cw, 6, '#060608', ya);
-    T(notes[yr] || '', W / 2, H / 2 + 220, { f: F.mono, s: 34, ls: 4, c: '#9a93a6', a: ya });
-  }
-  const log = [
-    ['FEB 2022', 'Rockstar confirms the next GTA is in development'],
-    ['SEP 2022', 'Early development footage leaks online'],
-    ['DEC 5, 2023', 'Trailer 1: over 90 million views in 24 hours'],
-    ['MAY 6, 2025', 'Trailer 2 lands'],
-  ];
-  const la = win(lt, 7.0, 11.6, .3, .4);
-  if (la) {
-    rect(0, 0, W, H, '#060608', la * .7);
-    log.forEach(([dte, txt], i) => {
-      const a = la * inv(7.1 + i * .7, 7.4 + i * .7, lt);
-      T(dte, 360, 330 + i * 110, { f: F.mono, s: 30, w: 600, ls: 3, al: 'left', c: '#ff4f9a', a });
-      T(typed(txt, lt, 7.2 + i * .7, 60), 680, 330 + i * 110, { f: F.mono, s: 34, al: 'left', c: '#f3efe8', a });
-    });
-  }
-  if (lt > 11.6) {
-    rect(0, 0, W, H, '#060608', inv(11.6, 11.9, lt) * .75);
-    const rows = [['FALL 2025', 12], ['MAY 26, 2026', 13.5], ['NOVEMBER 19, 2026', 15]];
-    T('RELEASE DATE', W / 2, 240, { f: F.mono, s: 28, ls: 14, c: '#9a93a6', a: inv(11.6, 11.9, lt) });
-    rows.forEach(([txt, t0], i) => {
-      const a = inv(t0 - .6, t0 - .3, lt); if (!a) return;
-      const y = 400 + i * 190, last = i === 2;
-      const k = last ? eoB(inv(t0, t0 + .5, lt)) : 1;
-      ctx.save(); ctx.translate(W / 2, y); ctx.scale(last ? lerp(.6, 1, k) : 1, last ? lerp(.6, 1, k) : 1);
-      T(txt, 0, 0, { s: last ? 170 : 130, ls: 6, c: last ? '#ff6f9f' : (lt > t0 ? '#6a6272' : '#f3efe8'), a, glow: last && lt > t0 ? 'rgba(255,79,154,.7)' : null, gb: 40 });
-      ctx.restore();
-      if (!last && lt > t0) {
-        const w = measure(txt, { s: 130, ls: 6 }) + 40, s = eo3(inv(t0, t0 + .25, lt));
-        ctx.save(); ctx.translate(W / 2, y); ctx.rotate(-.04); rect(-w / 2, -8, w * s, 16, '#ff3b3b'); ctx.restore();
-      }
-    });
-  }
 }
 
-/* --- GTA VI: flight over the ocean into Vice City --- */
 const viBoxes = [];
 for (let r = 2; r < 24; r++) for (let c = -12; c < 12; c++) {
   if (r % 6 === 0 || c % 6 === 0) continue;
@@ -1239,140 +778,599 @@ for (let r = 2; r < 24; r++) for (let c = -12; c < 12; c++) {
 }
 const viPalms = [];
 for (let i = 0; i < 34; i++) viPalms.push({ x: -1500 + i * 92 + (hash(i) - .5) * 60, z: 90 + hash(i + 4) * 90, h: 40 + hash(i + 8) * 26, lean: (hash(i + 9) - .5) * .4 });
-function sVI(lt, sc) {
-  const fly = eio(inv(0, 11, lt));
-  const camZ = lerp(-3000, -1150, fly) + lt * 8;
-  const camY = lerp(26, 120, eio(inv(2, 12, lt)));
-  const cam = cam3(Math.sin(lt * .2) * 40, camY, camZ, Math.sin(lt * .15) * .04, lerp(-.02, .06, eio(inv(2, 12, lt))));
-  const sunAz = .1;
+function artVI(lt) {
+  const fly = eio(inv(0, 14, lt));
+  const camZ = lerp(-3000, -1150, fly) + lt * 6;
+  const cam = cam3(300 + Math.sin(lt * .2) * 40, lerp(40, 130, fly), camZ, -.12 + Math.sin(lt * .15) * .03, lerp(.03, .08, fly));
+  const sunAz = -.05;
   const sx = sky3(cam, [[0, '#170a36'], [.4, '#6d1f6e'], [.72, '#ff5d8f'], [1, '#ffbe73']], sunAz, '#ffe2a8', 120, 'rgba(255,140,120,.55)');
   for (let i = 0; i < 7; i++) {
     const y = cam.hor - 480 + i * 55, x = ((hash(i) * W + lt * (10 + i * 3)) % (W + 600)) - 300;
     ctx.save(); ctx.globalAlpha = .25 + hash(i + 5) * .2; ctx.fillStyle = i % 2 ? '#ffb0c8' : '#ffd6a8';
     ctx.beginPath(); ctx.ellipse(x, y, 260 + hash(i) * 200, 10 + hash(i + 2) * 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
-  // ocean
   ctx.fillStyle = vgrad(cam.hor, H, [[0, '#6b2a5e'], [.35, '#2a1040'], [1, '#0b0518']]); ctx.fillRect(0, cam.hor, W, H);
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  for (let z = Math.ceil((camZ + 30) / 40) * 40; z < camZ + 5000; z += 40) {
-    const p = cam.p(0, 0, z); if (p[2] < 10 || p[1] > H) continue;
-    ctx.globalAlpha = .05 * clamp(1 - p[2] / 5000); ctx.fillStyle = '#ffb0d0'; ctx.fillRect(0, p[1], W, 1.5);
-  }
   if (sx != null) for (let i = 0; i < 160; i++) {
-    const u = hash(i * 2.3), y = cam.hor + 2 + Math.pow(u, 1.8) * (H - cam.hor);
-    const spread = 30 + u * 300, x = sx + (hash(i * 5.1 + Math.floor(lt * 6)) - .5) * spread * 2;
+    const u = hash(i * 2.3), y = cam.hor + 2 + Math.pow(u, 1.8) * (H - cam.hor), x = sx + (hash(i * 5.1 + Math.floor(lt * 6)) - .5) * (30 + u * 300) * 2;
     ctx.globalAlpha = (.6 - u * .4) * (.5 + .5 * Math.sin(lt * 5 + i)); ctx.fillStyle = '#ffd9a0'; ctx.fillRect(x, y, 10 + u * 40, 2);
   }
   ctx.restore();
-  // beach
   const bq = [cam.p(-4000, 0, 60), cam.p(4000, 0, 60), cam.p(4000, 0, 240), cam.p(-4000, 0, 240)];
   if (bq.every(p => p[2] > 0)) { ctx.fillStyle = '#3a1634'; ctx.beginPath(); bq.forEach(p => ctx.lineTo(p[0], p[1])); ctx.fill(); }
   drawBoxes(cam, viBoxes.map(b => ({ ...b })), { shadow: [36, 14, 52], lit: [196, 84, 118], top: [70, 30, 82], sun: [Math.sin(sunAz), Math.cos(sunAz)], fog: [230, 104, 140], far: 7000, fogPow: 1.8,
     win: { cols: ['#8ffcff', '#ff9fe0', '#ffe0a0'], dens: .32, maxZ: 3000, a: .9 }, neon: ['#ff4fb3', '#35f0ff', '#ffd060'] });
   const pl = viPalms.map(p => ({ p, q: cam.p(p.x, 0, p.z) })).filter(o => o.q[2] > 20).sort((a, b) => b.q[2] - a.q[2]);
   for (const { p, q } of pl) palm(q[0], q[1], p.h * cam.F / q[2], p.lean, lt + p.x * .01, '#12041a');
-  ctx.save(); ctx.strokeStyle = '#2a0a2c'; ctx.lineWidth = 3;
-  for (let i = 0; i < 7; i++) {
-    const x = 500 + i * 60 + lt * 38, y = cam.hor - 330 + Math.sin(i * 1.7) * 40 - lt * 4, f = Math.sin(lt * 8 + i) * 8;
-    ctx.beginPath(); ctx.moveTo(x - 14, y - f); ctx.quadraticCurveTo(x - 6, y - 4, x, y); ctx.quadraticCurveTo(x + 6, y - 4, x + 14, y - f); ctx.stroke();
-  }
-  ctx.restore();
-  if (sx != null) flare(sx, cam.hor - 66, .6, '#ffb0c0');
-
-  const a1 = win(lt, .9, 4.4, .6, .5);
-  T('Welcome back to Vice City.', W / 2, 400, { f: F.script, s: 170, c: '#fff3f8', glow: '#ff4fb3', gb: 40, a: a1 });
-  const a2 = win(lt, 4.6, 8.4, .5, .5);
-  T('THE STATE OF LEONIDA', W / 2, 360, { s: 130, ls: lerp(40, 14, eo3(inv(4.6, 6.2, lt))), c: '#fff', a: a2, glow: 'rgba(40,0,40,.6)', gb: 30 });
-  T('LUCIA  &  JASON', W / 2, 470, { f: F.mono, s: 36, ls: 22, w: 600, c: '#ffd6a8', a: a2 * inv(5.4, 6, lt) });
-  const tA = 1 - inv(18.6, 19.1, lt);
-  if (lt > 8.89 && tA > 0) {
-    const k = eo3(inv(8.89, 10.3, lt)), up = eio(inv(11.0, 11.8, lt));
-    ctx.save(); ctx.globalAlpha = tA; ctx.translate(W / 2, lerp(420, 300, up)); ctx.scale(lerp(1, .7, up), lerp(1, .7, up));
-    T('GRAND THEFT AUTO', 0, -150, { s: 130, ls: lerp(50, 16, k), c: '#fff', a: inv(8.89, 9.0, lt), glow: 'rgba(40,0,40,.6)', gb: 30 });
-    ctx.save(); ctx.globalAlpha *= inv(8.89, 9.0, lt);
-    ctx.font = `${lerp(520, 420, k)}px ${F.disp}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-    const g = ctx.createLinearGradient(-200, -100, 200, 250);
-    g.addColorStop(0, '#ff4fa3'); g.addColorStop(.5, '#ffb46b'); g.addColorStop(1, '#35f0ff');
-    ctx.shadowColor = 'rgba(255,79,163,.8)'; ctx.shadowBlur = 60; ctx.fillStyle = g; ctx.fillText('VI', 0, 110);
-    ctx.restore(); ctx.restore();
-  }
-  if (lt > 11.67 && tA > 0) {
-    const k = eoB(inv(11.67, 12.2, lt));
-    ctx.save(); ctx.globalAlpha = tA; ctx.translate(W / 2, 640); ctx.scale(lerp(1.8, 1, k), lerp(1.8, 1, k));
-    T('19 · 11 · 2026', 0, 0, { s: 150, ls: 10, c: '#fff', a: inv(11.67, 11.8, lt), glow: 'rgba(255,79,154,.8)', gb: 40 });
-    ctx.restore();
-    T('NOVEMBER 19, 2026 · PS5 · XBOX SERIES X|S', W / 2, 745, { f: F.mono, s: 28, ls: 8, c: '#ffe2c4', a: inv(12.2, 12.7, lt) * tA });
-  }
-  if (lt > 13.9 && tA > 0) {
-    const a = inv(13.9, 14.4, lt) * tA;
-    const ms = Math.max(0, RELEASE - Date.now());
-    const dd = Math.floor(ms / 864e5), hh = Math.floor(ms / 36e5) % 24, mm = Math.floor(ms / 6e4) % 60, ss = Math.floor(ms / 1e3) % 60;
-    ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(15,5,25,.6)'; rrect(W / 2 - 440, 800, 880, 150, 16); ctx.fill(); ctx.restore();
-    [[dd, 'DAYS'], [hh, 'HRS'], [mm, 'MIN'], [ss, 'SEC']].forEach(([v, l], i) => {
-      const x = W / 2 - 330 + i * 220;
-      T(String(v).padStart(2, '0'), x, 858, { s: 84, c: '#fff', a });
-      T(l, x, 920, { f: F.mono, s: 18, ls: 6, c: '#ff9ec3', a });
-    });
-  }
-  if (lt > 18.6) {
-    const a = inv(18.6, 19.3, lt);
-    rect(0, 0, W, H, '#07030c', a * .9);
-    const b = 1 - inv(21.8, 22.2, lt);
-    T('It started with a bug that made the cops chase you.', W / 2, 440, { f: F.ui, st: 'italic', w: 800, s: 64, c: '#fff', a: inv(18.9, 19.5, lt) * b });
-    T('Thirty-one years later, they’re still chasing.', W / 2, 540, { f: F.ui, st: 'italic', w: 800, s: 64, c: '#ff9ec3', a: inv(20.3, 20.9, lt) * b });
-    FX.police = inv(20.3, 20.8, lt) * b * 1.2;
-    if (lt > 22.2) {
-      const k = eo3(inv(22.2, 23, lt));
-      T('“Ah shit, here we go again.”', W / 2, 470, { f: F.ui, st: 'italic', w: 800, s: lerp(120, 104, k), c: '#fff', a: inv(22.2, 22.5, lt) });
-      T('A FAN-MADE HISTORY · NOT AFFILIATED WITH ROCKSTAR GAMES OR TAKE-TWO', W / 2, 640, { f: F.mono, s: 20, ls: 5, c: '#8a8196', a: inv(22.8, 23.4, lt) });
-    }
-  }
+  if (sx != null) flare(sx, cam.hor - 66, .5, '#ffb0c0');
 }
 
-/* ================= timeline ================= */
-const RELEASE = new Date(2026, 10, 19, 0, 0, 0).getTime();
-const SCENES = [
-  { id: 'open', bpm: 60, bars: 4, y: [1995, 1995], tag: 'PROLOGUE', label: '1995 Prologue', col: '#8f9ab0', draw: sOpen, music: 'rain', tin: null, bloom: .5,
-    hits: [[.3, 'boom', .7, 's'], [2.2, 'whoosh', 1, ''], [5.8, 'boom', .6, 's']], caps: [] },
-  { id: 'race', bpm: 150, bars: 7, y: [1995, 1996.5], tag: "RACE'N'CHASE", label: "1995 Race'n'Chase", col: '#4a8fe0', draw: sRace, music: 'chip', tin: 'glitch', bloom: .35,
-    hits: [[1.2, 'boom', .5, 's'], [9.6, 'boom', .8, 'fs']],
-    caps: [[1.8, 4.2, 'The pitch: cops and robbers, seen from *above.*'], [4.4, 7.0, 'Then a bug turned the police into *maniacs.*'], [7.2, 11.0, "Testers loved it. The bug stayed. The *name* didn't."]] },
-  { id: 'gta1', bpm: 150, bars: 9, y: [1997, 1997.8], tag: 'GRAND THEFT AUTO', label: '1997 GTA', col: '#f5d547', draw: sGTA1, music: 'chip', tin: 'glitch', bloom: .3,
-    hits: [[1.2, 'boom', .8, 'fs'], [9.6, 'boom', .6, 's']],
-    caps: [[6.4, 9.4, 'October 1997. Three cities, one rule: *anything goes.*'], [9.8, 14.2, 'Politicians called for a ban. Every headline sold *more copies.*']] },
-  { id: 'n99', bpm: 150, bars: 7, y: [1998, 1999.8], tag: 'LONDON · GTA 2', label: '1999 London & GTA 2', col: '#ff3bd4', draw: s99, music: 'chip', tin: 'whip', bloom: .3,
-    hits: [[.2, 'whoosh'], [.9, 'whoosh'], [1.6, 'whoosh']],
-    caps: [[3.4, 7.0, 'A new owner, a new label, and two quick *sequels.*'], [7.2, 11.0, 'Still flat. Still top-down. Something bigger was *coming.*']] },
-  { id: 'gta3', bpm: 100, bars: 8, y: [2000, 2001.8], tag: 'GTA III', label: '2001 GTA III', col: '#7ea6ff', draw: s3, music: 'dark', tin: 'dip', bloom: .45,
-    hits: [[3.2, 'riser', 5.2], [8.4, 'boom', 1, 'fs']],
-    caps: [[.4, 3.1, 'For four years, GTA looked *down* on its city.'], [3.4, 7.6, 'Then Rockstar asked: what if the camera came *down to the street?*'], [11.2, 14.8, 'PlayStation 2. A whole city in *3D.* A hero who never said a word.'], [15.0, 19.0, 'His name was *Claude.* We like him already.']] },
-  { id: 'vc', bpm: 112, bars: 7, y: [2002, 2003], tag: 'VICE CITY', label: '2002 Vice City', col: '#ff4fb3', draw: sVC, music: 'synth', tin: 'flash', bloom: .6,
-    hits: [[1.07, 'boom', .6, 's']],
-    caps: [[2.6, 5.8, 'October 2002. Pastel suits, neon nights, *1986 forever.*'], [6.2, 10.1, 'Tommy Vercetti, voiced by *Ray Liotta,* builds an empire.'], [10.6, 14.8, 'And the radio became a character: *nine stations* of pure eighties.']] },
-  { id: 'sa', bpm: 92, bars: 7, y: [2004, 2005], tag: 'SAN ANDREAS', label: '2004 San Andreas', col: '#7bd05b', draw: sSA, music: 'boom', tin: 'burn', bloom: .4,
-    hits: [[.98, 'boom', .8, 's'], [7.83, 'boom', .6, 's']],
-    caps: [[2.0, 5.1, 'October 2004. Not one city this time. *A whole state.*'], [5.3, 7.5, 'CJ comes home to *Grove Street.*'], [12.4, 18.0, 'Jets, gyms, haircuts, hunger. The *best-selling PS2 game* ever.']] },
-  { id: 'pocket', bpm: 150, bars: 6, y: [2004, 2009], tag: 'HANDHELDS', label: '2004–09 Handhelds', col: '#b58cff', draw: sPocket, music: 'chip', tin: 'whip', bloom: .4,
-    hits: [[.3, 'whoosh'], [.75, 'whoosh'], [1.2, 'whoosh'], [1.65, 'whoosh']],
-    caps: [[2.6, 9.4, 'Between the big releases, the cities went *portable.*']] },
-  { id: 'iv', bpm: 76, bars: 5, y: [2008, 2009.5], tag: 'GTA IV', label: '2008 GTA IV', col: '#a8b4c0', draw: sIV, music: 'pad', tin: 'dip', bloom: .7,
-    hits: [[1.26, 'boom', .8, 's'], [10, 'boom', .5, '']],
-    caps: [[2.6, 6.0, 'April 2008. Niko Bellic arrives, chasing the *American Dream.*'], [6.2, 9.8, 'Liberty City, rebuilt in *HD.* Every crash had weight.'], [13.3, 15.7, 'Then two more stories: *The Lost and Damned* and *The Ballad of Gay Tony.*']] },
-  { id: 'v', bpm: 140, bars: 13, y: [2013, 2013.9], tag: 'GTA V', label: '2013 GTA V', col: '#ff9a3c', draw: sV, music: 'trap', tin: 'flash', bloom: .45,
-    hits: [[.2, 'whoosh'], [.6, 'whoosh'], [1.0, 'whoosh'], [7.7, 'boom', 1, 'fs'], [10.28, 'boom', .5, ''], [15.4, 'boom', .6, 's']],
-    caps: [[2.4, 6.2, 'September 2013. Three criminals. *One button* to switch between them.'], [15.6, 18.7, 'Then *GTA Online* arrived. It never stopped.']] },
-  { id: 'wait', bpm: 120, bars: 9, y: [2014, 2026], tag: 'THE WAIT', label: '2014–26 The Wait', col: '#e8e8e8', draw: sWait, music: 'tick', tin: 'glitch', bloom: .4,
-    hits: [[12, 'boom', .5, 's'], [13.5, 'boom', .6, 's'], [15, 'boom', 1, 'fs']],
-    caps: [[.6, 6.3, 'Then came the *longest wait* in gaming.'], [15.8, 17.9, 'Two delays later, the date is *locked.*']] },
-  { id: 'vi', bpm: 108, bars: 11, y: [2026.2, 2026.9], tag: 'GTA VI', label: '2026 GTA VI', col: '#ff6f9f', draw: sVI, music: 'anthem', tin: 'flash', bloom: .38,
-    hits: [[6.69, 'riser', 2.2], [8.89, 'boom', 1, 'fs'], [11.67, 'boom', .9, 'fs'], [20.3, 'siren', 2.2], [22.2, 'boom', .6, 's']], caps: [] },
-];
-let acc = 0; SCENES.forEach(s => { s.B = 240 / s.bpm; s.d = s.B * s.bars; s.t0 = acc; acc += s.d; s.t1 = acc; });
-const DUR = acc;
-const sceneAt = t => SCENES.find(s => t < s.t1) || SCENES[SCENES.length - 1];
+/* =====================================================================
+   FIGURES — backlit character silhouettes (original, not likenesses)
+   ===================================================================== */
+function bust(x, by, h, o, col) {
+  ctx.save(); ctx.translate(x, by); ctx.fillStyle = col;
+  if (o.hair === 'long') {
+    ctx.beginPath(); ctx.ellipse(0, -.79 * h, .16 * h, .18 * h, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-.16 * h, -.8 * h); ctx.quadraticCurveTo(-.2 * h, -.55 * h, -.22 * h, -.42 * h); ctx.lineTo(.22 * h, -.42 * h); ctx.quadraticCurveTo(.2 * h, -.55 * h, .16 * h, -.8 * h); ctx.fill();
+  }
+  ctx.beginPath();
+  const sw = o.narrow ? .42 : .5;
+  ctx.moveTo(-(sw + .02) * h, 20); ctx.lineTo(-sw * h, -.26 * h);
+  ctx.quadraticCurveTo(-sw * h, -.46 * h, -.28 * h, -.5 * h);
+  ctx.lineTo(-.075 * h, -.57 * h); ctx.lineTo(-.07 * h, -.68 * h); ctx.lineTo(.07 * h, -.68 * h); ctx.lineTo(.075 * h, -.57 * h);
+  ctx.lineTo(.28 * h, -.5 * h); ctx.quadraticCurveTo(sw * h, -.46 * h, sw * h, -.26 * h); ctx.lineTo((sw + .02) * h, 20); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -.79 * h, .112 * h, .142 * h, 0, 0, Math.PI * 2); ctx.fill();
+  if (o.hair === 'short') { ctx.beginPath(); ctx.ellipse(0, -.86 * h, .122 * h, .09 * h, 0, Math.PI, Math.PI * 2); ctx.fill(); }
+  if (o.hair === 'cap') { ctx.beginPath(); ctx.ellipse(0, -.88 * h, .13 * h, .08 * h, 0, Math.PI, Math.PI * 2); ctx.fill(); ctx.fillRect(-.02 * h, -.9 * h, .2 * h, .03 * h); }
+  if (o.hair === 'buzz') { ctx.beginPath(); ctx.ellipse(0, -.84 * h, .118 * h, .1 * h, 0, Math.PI, Math.PI * 2); ctx.fill(); }
+  if (o.phone) {
+    ctx.beginPath(); ctx.moveTo(.3 * h, -.48 * h); ctx.lineTo(.42 * h, -.36 * h); ctx.lineTo(.2 * h, -.7 * h); ctx.lineTo(.12 * h, -.78 * h); ctx.lineTo(.06 * h, -.72 * h); ctx.closePath(); ctx.fill();
+    ctx.lineWidth = .1 * h; ctx.lineCap = 'round'; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(.36 * h, -.42 * h); ctx.lineTo(.14 * h, -.74 * h); ctx.stroke();
+    ctx.fillRect(.08 * h, -.98 * h, .07 * h, .26 * h); ctx.fillRect(.13 * h, -1.06 * h, .012 * h, .1 * h);
+  }
+  ctx.restore();
+}
+function figure(x, by, h, o, rim, lt) {
+  const br = 1 + .006 * Math.sin(lt * 1.6 + x);
+  ctx.save(); ctx.translate(x, by); ctx.scale(br, br); ctx.translate(-x, -by);
+  ctx.save(); ctx.shadowColor = rim; ctx.shadowBlur = 40; bust(x + 6, by, h, o, rim); ctx.restore();
+  bust(x - 2, by, h, o, rim);
+  bust(x - 8, by, h, o, '#0b0710');
+  if (o.pattern) {
+    ctx.save(); ctx.beginPath(); ctx.rect(x - .6 * h, by - .5 * h, 1.2 * h, .5 * h + 20); ctx.clip();
+    for (let i = 0; i < 60; i++) { const px = x - .5 * h + hash(i) * h, py = by - .48 * h + hash(i + 3) * .5 * h; ctx.fillStyle = i % 2 ? 'rgba(80,200,190,.16)' : 'rgba(255,120,190,.14)'; ctx.beginPath(); ctx.arc(px, py, .02 * h, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+  if (o.collar) { ctx.save(); ctx.strokeStyle = hexA(rim, .5); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - .2 * h, by - .5 * h); ctx.lineTo(x - 8, by - .3 * h); ctx.lineTo(x + .2 * h - 16, by - .5 * h); ctx.stroke(); ctx.restore(); }
+  ctx.restore();
+}
+function drawFigures(kind, lt, k) {
+  if (!kind || k <= 0) return;
+  ctx.save(); ctx.globalAlpha = k; ctx.translate((1 - eo3(k)) * 260, 0);
+  const B = 790;
+  if (kind === 'claude') figure(1620, B, 560, { hair: 'short', collar: true }, '#7ea6ff', lt);
+  if (kind === 'tommy') figure(1600, B, 580, { hair: 'short', phone: true, pattern: true }, '#ff7ac0', lt);
+  if (kind === 'cj') figure(1620, B, 560, { hair: 'buzz', narrow: true }, '#7bd05b', lt);
+  if (kind === 'niko') figure(1620, B, 560, { hair: 'buzz', collar: true }, '#c9d3dd', lt);
+  if (kind === 'trio') { figure(1420, B, 420, { hair: 'short', collar: true }, '#5aa8ff', lt); figure(1800, B, 440, { hair: 'buzz' }, '#ff9a3c', lt); figure(1610, B, 470, { hair: 'cap', narrow: true }, '#6ad36a', lt); }
+  if (kind === 'crew') { [[1380, 380, '#35f0ff'], [1820, 390, '#ff4fb3'], [1520, 420, '#ffd060'], [1680, 430, '#b48cff']].forEach(([x, hh, c], i) => figure(x, B, hh, { hair: i % 2 ? 'cap' : 'short' }, c, lt)); }
+  if (kind === 'duo') { figure(1760, B, 540, { hair: 'short', collar: true }, '#35f0ff', lt); figure(1520, B, 500, { hair: 'long', narrow: true }, '#ff5fa8', lt); }
+  ctx.restore();
+}
 
-/* ================= post ================= */
+/* =====================================================================
+   HIGHWAY — the persistent drive along the bottom of the frame
+   ===================================================================== */
+const HY = 800, BOT = H + 80;
+const zY = z => HY + (BOT - HY) / z, zX = (X, z) => 960 + X / z;
+function highway(t, ch, lt) {
+  const b = ch.band;
+  ctx.fillStyle = vgrad(640, HY + 10, [[0, hexA(b.haze, 0)], [1, hexA(b.haze, .95)]]); ctx.fillRect(0, 640, W, HY - 630);
+  drawSkyline(skyBand, HY + 2, b.far, -((t * 10) % 400), b.win, .6);
+  ctx.fillStyle = vgrad(HY, H, [[0, b.land], [1, '#050408']]); ctx.fillRect(0, HY, W, H - HY);
+  // road
+  ctx.fillStyle = vgrad(HY, H, [[0, '#1a1720'], [1, '#0d0c11']]);
+  ctx.beginPath(); ctx.moveTo(960, HY); ctx.lineTo(zX(1150, 1), BOT); ctx.lineTo(zX(-1150, 1), BOT); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,240,220,.55)'; ctx.lineWidth = 3;
+  [-1080, 1080].forEach(X => { ctx.beginPath(); ctx.moveTo(960, HY); ctx.lineTo(zX(X, 1), BOT); ctx.stroke(); });
+  const SPD = 9;
+  ctx.fillStyle = 'rgba(255,230,200,.75)';
+  for (const X of [-360, 360]) for (let k = 0; k < 18; k++) {
+    const z = ((k * 4 - t * SPD) % 72 + 72) % 72 + 1, z2 = z + 1.6;
+    ctx.beginPath(); ctx.moveTo(zX(X - 10, z), zY(z)); ctx.lineTo(zX(X + 10, z), zY(z)); ctx.lineTo(zX(X + 10, z2), zY(z2)); ctx.lineTo(zX(X - 10, z2), zY(z2)); ctx.fill();
+  }
+  // oncoming traffic
+  for (let k = 0; k < 7; k++) {
+    const z = 60 - ((k * 9.7 + t * 16) % 59);
+    const y = zY(z) - 40 / z, x = zX(-720, z), r = clamp(260 / z, 2, 60);
+    light(x - 60 / z, y, r, '#fff2dc', .9); light(x + 60 / z, y, r, '#fff2dc', .9);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .18; ctx.drawImage(sprite('#fff2dc'), x - r, y, r * 2, r * 5); ctx.restore();
+  }
+  // roadside: lamps, palms, poles
+  for (let k = 0; k < 8; k++) {
+    for (const side of [-1, 1]) {
+      const z = ((k * 9 + (side > 0 ? 4.5 : 0) - t * SPD) % 72 + 72) % 72 + .9;
+      const X = side * 1500, x = zX(X, z), y = zY(z), hh = 700 / z;
+      if (y > H + 200) continue;
+      if (b.palms && k % 2 === 0) { if (z > 2.4) palm(zX(side * 1900, z), y, 900 / z, -side * .06, t + k, '#0a0610'); continue; }
+      ctx.strokeStyle = '#0b0910'; ctx.lineWidth = Math.max(1, 26 / z);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - hh); ctx.lineTo(x - side * 200 / z, y - hh - 20 / z); ctx.stroke();
+      light(x - side * 200 / z, y - hh - 10 / z, clamp(420 / z, 3, 90), b.lamp, .95);
+    }
+  }
+  // overhead gantry with this chapter's destination
+  const L = ch.d;
+  const zg = lt < 1.2 ? lerp(60, 14, eo3(inv(0, 1.2, lt))) : lt < L - 1.6 ? lerp(14, 4.2, inv(1.2, L - 1.6, lt)) : lerp(4.2, .55, eio(inv(L - 1.6, L, lt)));
+  if (zg > .6) {
+    const a = inv(.6, 1.2, zg), s = 1 / zg, y0 = zY(zg);
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.fillStyle = '#0c0b10';
+    const pw = Math.max(2, 40 * s);
+    ctx.fillRect(zX(-1250, zg) - pw / 2, y0 - 900 * s, pw, 900 * s); ctx.fillRect(zX(1250, zg) - pw / 2, y0 - 900 * s, pw, 900 * s);
+    ctx.fillRect(zX(-1250, zg), y0 - 900 * s, 2500 * s, 30 * s);
+    const sx = zX(ch.signX ?? 380, zg), sy = y0 - 880 * s, sw = 1300 * s, sh = 300 * s;
+    ctx.fillStyle = '#0f6b3c'; rrect(sx - sw / 2, sy, sw, sh, 18 * s); ctx.fill();
+    ctx.strokeStyle = '#e8f2ea'; ctx.lineWidth = Math.max(1, 8 * s); rrect(sx - sw / 2 + 14 * s, sy + 14 * s, sw - 28 * s, sh - 28 * s, 12 * s); ctx.stroke();
+    ctx.fillStyle = '#e8f2ea';
+    const ax = sx - sw / 2 + 110 * s, ay = sy + sh / 2;
+    ctx.beginPath(); ctx.moveTo(ax, ay - 90 * s); ctx.lineTo(ax + 60 * s, ay - 20 * s); ctx.lineTo(ax + 22 * s, ay - 20 * s); ctx.lineTo(ax + 22 * s, ay + 90 * s); ctx.lineTo(ax - 22 * s, ay + 90 * s); ctx.lineTo(ax - 22 * s, ay - 20 * s); ctx.lineTo(ax - 60 * s, ay - 20 * s); ctx.fill();
+    ctx.font = `600 ${Math.max(4, 118 * s)}px ${F.ui}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    ctx.fillText(ch.sign, ax + 110 * s, ay + 4 * s, sw - 260 * s);
+    light(sx - sw * .3, sy + sh + 20 * s, 60 * s, '#fff2dc', .5); light(sx + sw * .3, sy + sh + 20 * s, 60 * s, '#fff2dc', .5);
+    ctx.restore();
+  }
+  // our car
+  car(1010 + Math.sin(t * .6) * 10, 1052 + Math.sin(t * 7) * 1.2, ch);
+}
+function car(cx, by, ch) {
+  const body = '#141119', rim = ch.band.haze;
+  ctx.save();
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .45; ctx.drawImage(sprite('#ff2438'), cx - 230, by - 30, 460, 120); ctx.restore();
+  ctx.fillStyle = '#060508'; rrect(cx - 232, by - 44, 64, 58, 10); ctx.fill(); rrect(cx + 168, by - 44, 64, 58, 10); ctx.fill();
+  ctx.fillStyle = body;
+  ctx.beginPath(); ctx.moveTo(cx - 240, by - 20); ctx.lineTo(cx - 236, by - 118); ctx.quadraticCurveTo(cx - 230, by - 138, cx - 200, by - 142); ctx.lineTo(cx + 200, by - 142); ctx.quadraticCurveTo(cx + 230, by - 138, cx + 236, by - 118); ctx.lineTo(cx + 240, by - 20); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - 170, by - 140); ctx.lineTo(cx - 130, by - 222); ctx.quadraticCurveTo(cx - 120, by - 232, cx - 100, by - 232); ctx.lineTo(cx + 100, by - 232); ctx.quadraticCurveTo(cx + 120, by - 232, cx + 130, by - 222); ctx.lineTo(cx + 170, by - 140); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = vgrad(by - 222, by - 150, [[0, '#2a2438'], [1, '#0a080e']]);
+  ctx.beginPath(); ctx.moveTo(cx - 150, by - 150); ctx.lineTo(cx - 118, by - 216); ctx.lineTo(cx + 118, by - 216); ctx.lineTo(cx + 150, by - 150); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = hexA(rim, .55); ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(cx - 128, by - 226); ctx.lineTo(cx + 128, by - 226); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 232, by - 132); ctx.quadraticCurveTo(cx, by - 146, cx + 232, by - 132); ctx.stroke();
+  ctx.fillStyle = '#ff1f35'; rrect(cx - 222, by - 112, 444, 20, 6); ctx.fill();
+  ctx.fillStyle = '#ff8a95'; ctx.fillRect(cx - 214, by - 106, 60, 6); ctx.fillRect(cx + 154, by - 106, 60, 6);
+  for (let i = 0; i < 7; i++) light(cx - 200 + i * 66.6, by - 102, 44, '#ff2438', .8);
+  ctx.fillStyle = '#0a090d'; ctx.fillRect(cx - 236, by - 58, 472, 40);
+  ctx.fillStyle = '#ddd6c4'; rrect(cx - 62, by - 84, 124, 36, 4); ctx.fill();
+  ctx.fillStyle = '#1a1a22'; ctx.font = `600 22px ${F.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+  ctx.fillText(ch.plate, cx, by - 65);
+  ctx.restore();
+}
+
+/* =====================================================================
+   COVER CARDS — original cover art per game, rendered once
+   ===================================================================== */
+const cards = {};
+function makeCards() {
+  const big = document.createElement('canvas'); big.width = W; big.height = H;
+  const bctx2 = big.getContext('2d');
+  for (const ch of CH) {
+    if (!ch.card) continue;
+    withCtx(bctx2, () => { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ch.art(ch.cardT ?? 6); });
+    const c = document.createElement('canvas'); c.width = 300; c.height = 400;
+    const g = c.getContext('2d');
+    const cx = ch.cardX ?? 1100;
+    g.drawImage(big, cx - 330, 60, 660, 880, 0, 0, 300, 400);
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 0, 300, 400);
+    withCtx(g, () => ch.card());
+    cards[ch.id] = c;
+  }
+}
+const cardTop = (big = 'GRAND THEFT AUTO') => T(big, 150, 40, { s: 30, ls: 3, c: '#fff', shadow: 'rgba(0,0,0,.6)', sx: 2, sy: 2 });
+
+/* =====================================================================
+   CHAPTERS
+   ===================================================================== */
+const B_NIGHT = { haze: '#2a1a3a', far: '#140c1e', win: 'rgba(255,210,150,.8)', land: '#120e18', lamp: '#ffb870' };
+const B_DUSK = { haze: '#7a3050', far: '#2a1024', win: 'rgba(255,200,150,.8)', land: '#1a0f18', lamp: '#ffc080', palms: true };
+const B_NEON = { haze: '#5a1a5a', far: '#22082e', win: 'rgba(120,255,240,.9)', land: '#150a1c', lamp: '#ff9ad0', palms: true };
+const B_GREY = { haze: '#3a3a40', far: '#16181c', win: 'rgba(255,210,150,.7)', land: '#101114', lamp: '#ffa050' };
+const B_GOLD = { haze: '#a0503a', far: '#2a1418', win: 'rgba(255,210,150,.8)', land: '#1c1012', lamp: '#ffc070', palms: true };
+const CH = [
+  { id: 'intro', bpm: 100, bars: 5, music: 'dark', art: artIntro, band: B_DUSK, sign: 'Liberty City  1997', plate: 'GTA 1995', col: '#ff6f9f', hits: [[.4, 'boom', .7, 's']] },
+  { id: 'origins', bpm: 60, bars: 5, music: 'rain', art: artDundee, band: B_NIGHT, rain: true, year: '1995', dot: 'ORIGINS', label: '1995 Origins', col: '#8fb0ff', sign: 'Dundee  Scotland', plate: 'DMA 1995',
+    heading: ['IT STARTED', 'WITH A BUG'],
+    body: '**DMA Design,** a studio in Dundee, Scotland best known for **Lemmings,** was building a racing game called **Race’n’Chase.** The way the team tells it, a bug made police cars ram players off the road. Instead of fixing it, they built the whole game around the chase.',
+    facts: 'STUDIO DMA Design  ·  CITY Dundee  ·  WORKING TITLE Race’n’Chase',
+    say: ['In the mid-nineties, a small Scottish studio called DMA Design was riding high on Lemmings.',
+          'Their next project, a cops-and-robbers game called Race’n’Chase, had a problem.',
+          'A bug made the police hunt players down like maniacs. Testers loved it.',
+          'The bug stayed. The chase became the point. And the name had to change.'],
+    notes: [['THE BUG THAT\nBUILT AN EMPIRE', 1400, 150, -.06, 46, '#ff6f9f', 6]],
+    card: () => { T("RACE'N'CHASE", 150, 330, { s: 44, c: '#fff', shadow: '#000', sx: 3, sy: 3 }); ctx.save(); ctx.translate(150, 170); ctx.rotate(-.2); ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = 5; ctx.strokeRect(-110, -30, 220, 60); T('PROTOTYPE', 0, 2, { s: 40, ls: 4, c: '#ff3b3b' }); ctx.restore(); } },
+  { id: 'gta1', bpm: 150, bars: 13, music: 'chip', art: artPixel, band: B_NIGHT, year: '1997', dot: 'GTA', label: '1997 GTA', col: '#f5d547', sign: 'Liberty City', plate: 'GTA 1997',
+    heading: ['IT ALL', 'BEGAN'],
+    body: '**Grand Theft Auto** launched in October 1997, on PC first and then PlayStation. A top-down crime sandbox across three cities: **Liberty City, San Andreas and Vice City.** Steal any car, take jobs from ringing payphones, and outrun a wanted level that kept climbing.',
+    facts: 'PLATFORMS PC, PS1  ·  CITIES 3  ·  VIEW Top-down',
+    say: ['October 1997: Grand Theft Auto hits PC, followed by the PlayStation.',
+          'Seen from above, you steal cars, answer payphones for jobs, and rack up a wanted level.',
+          'It had something few games offered at the time: total freedom to do what you wanted.',
+          'Politicians called for a ban. The headlines turned a small game into a sensation.'],
+    notes: [['TOTAL\nFREEDOM.', 1600, 180, -.08, 60, '#ffffff', 5], ['“BAN THIS\nSICK GAME”', 1620, 560, .05, 42, '#ff6f9f', 14]],
+    card: () => { T('GRAND THEFT', 150, 250, { f: F.pix, s: 20, c: '#f5d547', shadow: '#000', sx: 3, sy: 3 }); T('AUTO', 150, 290, { f: F.pix, s: 34, c: '#f5d547', shadow: '#000', sx: 3, sy: 3 }); for (let i = 0; i < 4; i++) star(96 + i * 36, 336, 12, '#fff'); } },
+  { id: 'n99', bpm: 150, bars: 13, music: 'chip', art: art99, band: B_NIGHT, year: '1999', dot: 'GTA 2', label: '1999 London & GTA 2', col: '#ff3bd4', sign: 'London  ·  Anywhere City', plate: 'GTA 1999', cardX: 1600,
+    heading: ['THE BRAND', 'IS BORN'],
+    body: 'Publisher Take-Two launched **Rockstar Games** in New York in 1998, and bought DMA Design outright a year later. **London 1969,** the first expansion, took the series to swinging London. Then **GTA 2** added rival gangs with a respect meter that decided who shot at you.',
+    facts: 'LABEL Rockstar Games  ·  EXPANSION London 1969  ·  SEQUEL GTA 2',
+    say: ['In 1998, publisher Take-Two launched a new label in New York: Rockstar Games.',
+          'London 1969 took the series to sixties London. It’s still the only GTA set outside America.',
+          'Then GTA 2 added rival gangs. Do jobs for one, and the others come looking for you.',
+          'Still flat. Still top-down. But something much bigger was being built.'],
+    notes: [['STILL FLAT.\nFOR NOW.', 1560, 900, -.05, 48, '#28f0ff', 15]],
+    card: () => { cardTop(); T('GTA 2', 150, 220, { s: 120, c: '#28f0ff', glow: 'rgba(40,240,255,.8)', gb: 20 }); T('ANYWHERE CITY', 150, 330, { f: F.mono, s: 18, ls: 4, c: '#ff3bd4' }); } },
+  { id: 'gta3', bpm: 100, bars: 9, music: 'dark', art: art3, band: B_NIGHT, year: '2001', dot: 'GTA III', label: '2001 GTA III', col: '#7ea6ff', sign: 'Liberty City', plate: 'GTA 2001', fig: 'claude',
+    heading: ['THE WORLD', 'WENT 3D'],
+    body: '**GTA III** (October 22, 2001) dropped the camera to street level. A full 3D **Liberty City** on PlayStation 2, with traffic, pedestrians, police chases and radio stations. Its hero never said a word. Rockstar delayed it three weeks after 9/11 to rework parts of the game.',
+    facts: 'PLATFORM PS2  ·  SETTING Liberty City  ·  LEAD Claude',
+    say: ['In 2001, everything changed. The camera came down into the street.',
+          'Liberty City became a living 3D world: traffic, pedestrians, gangs and cops.',
+          'Its hero never spoke a single word. His name was Claude. We like him already.',
+          'It was the best-selling game of 2001 in the US, and it defined the open world.'],
+    notes: [['A WHOLE CITY,\nIN 3D.', 1540, 150, -.06, 50, '#ffffff', 4]],
+    card: () => { cardTop(); T('III', 150, 240, { s: 190, c: '#fff', shadow: 'rgba(0,0,0,.5)', sx: 5, sy: 5 }); T('LIBERTY CITY', 150, 360, { f: F.mono, s: 18, ls: 4, c: '#ffd9b0' }); } },
+  { id: 'vc', bpm: 112, bars: 10, music: 'synth', art: artVC, band: B_NEON, year: '2002', dot: 'VICE CITY', label: '2002 Vice City', col: '#ff4fb3', sign: 'Vice City', plate: 'VC 1986', fig: 'tommy', cardX: 1180,
+    heading: ['A BIGGER,', 'BRIGHTER WORLD'],
+    body: '**Vice City** (October 2002) jumped back to **1986:** neon, pastel suits and a sun-soaked city inspired by Miami. **Tommy Vercetti,** voiced by **Ray Liotta,** had a voice and an ego. For the first time you could buy businesses and build a criminal empire, property by property.',
+    facts: 'SETTING Vice City, 1986  ·  LEAD Tommy Vercetti  ·  RADIO 9 stations',
+    say: ['A year later, Rockstar traded grey Liberty City for the neon glow of Vice City.',
+          'It’s 1986. Tommy Vercetti, voiced by Ray Liotta, arrives with a plan and a grudge.',
+          'For the first time, you could buy businesses and build an empire one property at a time.',
+          'And a soundtrack packed with real eighties hits made the radio a character of its own.'],
+    notes: [['SAME FREEDOM.\nA BOLDER WORLD.', 1480, 150, -.07, 46, '#ffffff', 6]],
+    card: () => { T('GTA', 150, 70, { s: 40, ls: 8, c: '#fff' }); T('Vice City', 150, 200, { f: F.script, s: 96, c: '#ffe6f4', glow: '#ff2fa8', gb: 24 }); T('1986', 150, 330, { s: 50, ls: 10, c: '#7fd8ff' }); } },
+  { id: 'sa', bpm: 92, bars: 8, music: 'boom', art: artSA, band: B_GOLD, year: '2004', dot: 'SAN ANDREAS', label: '2004 San Andreas', col: '#7bd05b', sign: 'Los Santos  ·  San Fierro  ·  Las Venturas', plate: 'GROVE 92', fig: 'cj', signX: 200,
+    heading: ['A WHOLE', 'STATE'],
+    body: '**San Andreas** (October 2004) was set in **1992** across three cities: Los Santos, San Fierro and Las Venturas, with countryside and desert in between. **Carl “CJ” Johnson** could swim, fly, work out, eat, and get haircuts. It became the best-selling PS2 game ever.',
+    facts: 'SETTING San Andreas, 1992  ·  LEAD Carl Johnson  ·  CITIES 3',
+    say: ['October 2004. Carl Johnson comes home to Grove Street after his mother is killed.',
+          'This time the map was a whole state: three cities, mountains, forests and desert.',
+          'Your body changed with how you played. Eat too much and you gained weight. Hit the gym and you bulked up.',
+          'It became the best-selling PlayStation 2 game of all time.'],
+    notes: [['“AH SH*T, HERE\nWE GO AGAIN.”', 1480, 150, -.05, 44, '#ffffff', 3]],
+    card: () => { cardTop(); T('SAN', 150, 190, { s: 100, c: '#fff4e0', shadow: '#2a1020', sx: 4, sy: 4 }); T('ANDREAS', 150, 290, { s: 80, c: '#ffcf5a', shadow: '#2a1020', sx: 4, sy: 4 }); } },
+  { id: 'pocket', bpm: 150, bars: 10, music: 'chip', art: artPocket, band: B_NIGHT, year: '2004–09', dot: 'HANDHELDS', label: '2004–09 Handhelds', col: '#b58cff', sign: 'Liberty City  ·  Vice City', plate: 'PSP 2005', pocket: true,
+    heading: ['MEANWHILE,', 'IN YOUR POCKET'],
+    body: 'Between the console giants, the series went portable: **GTA Advance** (2004, Game Boy Advance), **Liberty City Stories** (2005) and **Vice City Stories** (2006) on PSP, and **Chinatown Wars** (2009) on Nintendo DS, which brought back a top-down view.',
+    facts: 'GAMES 4  ·  HANDHELDS GBA, PSP, DS',
+    say: ['Between the big releases, the cities went portable.',
+          'Liberty City Stories and Vice City Stories squeezed full 3D cities onto the PSP.',
+          'Chinatown Wars on the DS went back to a top-down view, with touch-screen mini-games.'] },
+  { id: 'iv', bpm: 76, bars: 7, music: 'pad', art: artIV, band: B_GREY, rain: true, year: '2008', dot: 'GTA IV', label: '2008 GTA IV', col: '#c9d3dd', sign: 'Liberty City', plate: 'NB 2008', fig: 'niko', cardX: 900,
+    heading: ['THE AMERICAN', 'DREAM'],
+    body: '**GTA IV** (April 29, 2008) rebuilt Liberty City in HD on the new **RAGE** engine, with **Euphoria** physics that made every crash and fall feel real. **Niko Bellic,** an Eastern European war veteran, came to America chasing a better life. It made **$500 million** in its first week.',
+    facts: 'FIRST WEEK $500M  ·  LEAD Niko Bellic  ·  EPISODES 2 (2009)',
+    say: ['April 2008. Niko Bellic steps off a cargo ship into Liberty City.',
+          'His cousin promised him the American Dream. The reality was a lot darker.',
+          'New physics made every crash feel heavy. It made 500 million dollars in its first week.',
+          'Then came The Lost and Damned and The Ballad of Gay Tony: two new stories in the same city.'],
+    notes: [['GRITTIER.\nHEAVIER. REAL.', 1520, 150, -.05, 48, '#ffffff', 5], ['SHE’S HOLDING\nA COFFEE', 1240, 330, .04, 30, '#ff6f9f', 10]],
+    card: () => { cardTop(); T('IV', 150, 230, { s: 210, c: '#f2f4f6', shadow: 'rgba(0,0,0,.6)', sx: 5, sy: 5 }); T('LIBERTY CITY', 150, 360, { f: F.mono, s: 18, ls: 4, c: '#c9d3dd' }); } },
+  { id: 'v', bpm: 140, bars: 13, music: 'trap', art: t => artAerial(t, false), band: B_GOLD, year: '2013', dot: 'GTA V', label: '2013 GTA V', col: '#ff9a3c', sign: 'Los Santos', plate: 'LS 2013', fig: 'trio', cardX: 960,
+    heading: ['THREE', 'CRIMINALS'],
+    body: '**GTA V** (September 17, 2013) let you switch between three leads at any moment: **Michael,** a retired bank robber; **Franklin,** a young hustler; and **Trevor,** pure chaos. It made **$1 billion in three days,** faster than any entertainment product before it.',
+    facts: 'DAY ONE $800M  ·  THREE DAYS $1B  ·  SOLD 200M+ copies',
+    say: ['September 2013. Three protagonists, and you could switch between them at any moment.',
+          'Heists brought them together: pick a crew, choose an approach, then pull it off.',
+          'It made a billion dollars in three days, faster than any entertainment product before it.',
+          'Released across three console generations, it has sold over 200 million copies.'],
+    notes: [['SWITCH AT\nANY MOMENT.', 1560, 150, -.06, 50, '#ffffff', 4]],
+    card: () => { cardTop(); ctx.save(); ctx.font = `230px ${F.disp}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const g = ctx.createLinearGradient(80, 0, 220, 0); g.addColorStop(0, '#5aa8ff'); g.addColorStop(.5, '#6ad36a'); g.addColorStop(1, '#ff9a3c'); ctx.fillStyle = g; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 20; ctx.fillText('V', 150, 240); ctx.restore(); T('LOS SANTOS', 150, 360, { f: F.mono, s: 18, ls: 4, c: '#fff0dc' }); } },
+  { id: 'online', bpm: 140, bars: 10, music: 'trap', art: t => artAerial(t, true), band: B_NEON, year: '2013', dot: 'ONLINE', label: '2013 GTA Online', col: '#35f0ff', sign: 'Los Santos  ·  Online', plate: 'ONLINE', fig: 'crew', cardX: 960,
+    heading: ['THE GAME THAT', 'NEVER ENDED'],
+    body: '**GTA Online** launched on **October 1, 2013.** A shared Los Santos where you build your own criminal career with friends. Free updates added heists, businesses, nightclubs, car meets and more for over a decade, keeping GTA V near the top of the charts year after year.',
+    facts: 'LAUNCH Oct 1, 2013  ·  UPDATES Free, for over 10 years',
+    say: ['Two weeks after launch, GTA Online opened its doors.',
+          'Heists, businesses, nightclubs, car meets: free updates kept arriving for over a decade.',
+          'It kept GTA V selling long after most games are forgotten.'],
+    notes: [['STILL\nRUNNING.', 1600, 150, -.06, 56, '#35f0ff', 4]],
+    card: () => { cardTop(); T('ONLINE', 150, 230, { s: 90, ls: 4, c: '#fff', glow: 'rgba(53,240,255,.8)', gb: 20 }); T('SINCE 2013', 150, 330, { f: F.mono, s: 18, ls: 4, c: '#35f0ff' }); } },
+  { id: 'wait', bpm: 120, bars: 10, music: 'tick', art: artWait, band: B_NIGHT, year: '2014–25', dot: 'THE WAIT', label: '2014–25 The Wait', col: '#e8e8e8', sign: 'Leonida  2026', plate: 'WAITING',
+    heading: ['THE LONGEST', 'WAIT'],
+    body: 'Year after year, GTA V came back on new hardware while fans waited. In **February 2022** Rockstar confirmed a new GTA. In **December 2023** the first trailer passed **90 million views in 24 hours.** Planned for fall 2025, it slipped to May 2026, then to **November 19, 2026.**',
+    facts: 'TRAILER 1 Dec 5, 2023  ·  TRAILER 2 May 6, 2025',
+    say: ['Then came the wait. PS4, PC, PS5: GTA V kept coming back.',
+          'February 2022: Rockstar confirms the next Grand Theft Auto is in development.',
+          'December 2023: the first trailer breaks YouTube records within a day.',
+          'Planned for fall 2025, then May 2026, the date finally settled: November 19, 2026.'],
+    notes: [['FALL 2025', 1520, 190, -.05, 44, '#ffffff', 13, true], ['MAY 26, 2026', 1560, 290, -.03, 44, '#ffffff', 15, true], ['NOV 19, 2026!', 1600, 400, -.05, 58, '#ff6f9f', 17]] },
+  { id: 'vi', bpm: 108, bars: 13, music: 'anthem', art: artVI, band: B_NEON, year: '2026', dot: 'GTA VI', label: '2026 GTA VI', col: '#ff6f9f', sign: 'Vice City  ·  Leonida', plate: 'NOV 2026', fig: 'duo', cardX: 1000, cardT: 13,
+    heading: ['WELCOME BACK', 'TO VICE CITY'],
+    body: '**GTA VI** returns to **Vice City** in the fictional state of **Leonida,** inspired by modern Florida. Two leads, **Lucia and Jason,** a criminal couple, with Lucia the series’ first female lead of the 3D era. It launches **November 19, 2026** on PS5 and Xbox Series X|S.',
+    facts: 'SETTING Leonida  ·  LEADS Lucia & Jason  ·  PLATFORMS PS5, Xbox Series X|S',
+    say: ['Twelve years after GTA V, we’re going back to Vice City.',
+          'Leonida: beaches, swamps, highways and neon, inspired by modern Florida.',
+          'Lucia and Jason: partners in crime, and the first female lead since the series went 3D.',
+          'November 19, 2026. Thirty-one years after a bug in Dundee, the chase is still on.'],
+    notes: [['STILL\nDRIVING.', 1560, 870, -.08, 64, '#ff6f9f', 21]],
+    card: () => { cardTop(); ctx.save(); ctx.font = `210px ${F.disp}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const g = ctx.createLinearGradient(80, 140, 220, 320); g.addColorStop(0, '#ff4fa3'); g.addColorStop(.5, '#ffb46b'); g.addColorStop(1, '#35f0ff'); ctx.fillStyle = g; ctx.shadowColor = 'rgba(255,79,163,.8)'; ctx.shadowBlur = 30; ctx.fillText('VI', 150, 235); ctx.restore(); T('19 · 11 · 2026', 150, 360, { s: 30, ls: 4, c: '#fff' }); } },
+];
+let acc = 0;
+CH.forEach((c, i) => {
+  c.i = i; c.B = 240 / c.bpm; c.d = c.B * c.bars; c.t0 = acc; acc += c.d; c.t1 = acc;
+  c.hits = c.hits || [[0, 'whoosh', 1], [.55, 'boom', .5, 's']];
+  c.notes = c.notes || [];
+});
+const DUR = acc;
+const chAt = t => CH.find(c => t < c.t1) || CH[CH.length - 1];
+const RELEASE = new Date(2026, 10, 19, 0, 0, 0).getTime();
+
+/* =====================================================================
+   LAYOUT LAYERS
+   ===================================================================== */
+function richLines(str, o, maxW) {
+  const toks = []; let bold = false;
+  for (const part of str.split('**')) { for (const w of part.split(' ')) if (w) toks.push({ w, bold }); bold = !bold; }
+  const lines = []; let line = [], x = 0;
+  const sp = measure(' ', o);
+  for (const tk of toks) {
+    const ww = measure(tk.w, { ...o, w: tk.bold ? 800 : o.w });
+    if (x + ww > maxW && line.length) { lines.push(line); line = []; x = 0; }
+    line.push({ ...tk, x, ww }); x += ww + sp;
+  }
+  if (line.length) lines.push(line);
+  return lines;
+}
+const bodyCache = {};
+function leftColumn(ch, lt, a, prev) {
+  if (!ch.year || a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a;
+  const X = 84;
+  T(`CHAPTER ${String(ch.i).padStart(2, '0')}`, X, 70, { f: F.mono, s: 18, w: 600, ls: 6, al: 'left', c: ch.col, a: inv(.3, .8, lt) });
+  let yr = ch.year;
+  const pn = prev && /^\d{4}$/.test(prev.year || '') ? +prev.year : null;
+  if (pn && /^\d{4}$/.test(ch.year) && lt < 1.1) yr = String(Math.round(lerp(pn, +ch.year, eo3(inv(.3, 1.0, lt)))));
+  const ys = eoB(inv(.3, .7, lt));
+  ctx.save(); ctx.translate(X, 150); ctx.scale(lerp(1.15, 1, ys), lerp(1.15, 1, ys));
+  T(yr, 0, 0, { f: F.ui, w: 900, s: 136, al: 'left', c: '#f7f1e6', a: inv(.3, .45, lt), shadow: 'rgba(0,0,0,.45)', sx: 5, sy: 5 });
+  ctx.restore();
+  brush(X, 232, 330 * eo3(inv(.6, 1.1, lt)), 10, '#e8303e', ch.i);
+  ch.heading.forEach((ln, i) => writeOn(ln, X, 300 + i * 74, -.035, 68, '#fff', lt, 1.0 + i * .45, .7, 'left'));
+  const o = { f: F.ui, w: 400, s: 25 };
+  const lines = bodyCache[ch.id] || (bodyCache[ch.id] = richLines(ch.body, o, 590));
+  lines.forEach((ln, i) => {
+    const k = eo3(inv(1.9 + i * .18, 2.5 + i * .18, lt));
+    for (const tk of ln) T(tk.w, X + tk.x, 432 + i * 35 + (1 - k) * 12, { ...o, w: tk.bold ? 800 : 400, al: 'left', c: tk.bold ? '#fff' : '#e4dccf', a: k, glow: 'rgba(0,0,0,.7)', gb: 10 });
+  });
+  const fy = 432 + lines.length * 35 + 14;
+  T(ch.facts, X, fy, { f: F.mono, s: 16, w: 600, ls: 2, al: 'left', c: ch.col, a: inv(3.2, 3.8, lt), glow: 'rgba(0,0,0,.8)', gb: 8 });
+  ctx.restore();
+}
+function brush(x, y, w, h, col, seed) {
+  if (w <= 2) return;
+  ctx.save(); ctx.fillStyle = col;
+  for (let k = 0; k < 3; k++) {
+    ctx.globalAlpha = k ? .5 : 1;
+    ctx.beginPath(); ctx.moveTo(x, y + (hash(seed + k) - .5) * 4);
+    for (let i = 0; i <= 12; i++) ctx.lineTo(x + w * i / 12, y - h / 2 + (hash(seed * 3 + i + k * 20) - .5) * h * .5 + (i === 12 ? h * .3 : 0));
+    for (let i = 12; i >= 0; i--) ctx.lineTo(x + w * i / 12, y + h / 2 + (hash(seed * 5 + i + k * 30) - .5) * h * .5 - k * 2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+function writeOn(str, x, y, rot, size, col, lt, t0, dur, al = 'left', strike = false) {
+  const k = inv(t0, t0 + dur, lt); if (k <= 0) return;
+  const w = measure(str, { f: F.mark, s: size });
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+  const ox = al === 'center' ? -w / 2 : 0;
+  ctx.beginPath(); ctx.rect(ox - 20, -size, (w + 40) * eo3(k), size * 2); ctx.clip();
+  T(str, 0, 0, { f: F.mark, s: size, al, c: col, glow: 'rgba(0,0,0,.6)', gb: 12 });
+  ctx.restore();
+  if (strike && k >= 1) {
+    const s2 = eo3(inv(t0 + dur + .6, t0 + dur + 1, lt));
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); if (s2 > 0) { ctx.fillStyle = '#e8303e'; ctx.fillRect(ox - 10, -4, (w + 20) * s2, 9); } ctx.restore();
+  }
+}
+function notes(ch, lt, a) {
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a;
+  for (const [txt, x, y, rot, size, col, t0, strike] of ch.notes) {
+    const lines = txt.split('\n');
+    lines.forEach((ln, i) => writeOn(ln, x, y + i * size * 1.05, rot, size, col, lt, t0 + i * .35, .6, 'left', strike));
+    if (!strike) {
+      const k = eo3(inv(t0 + lines.length * .35 + .3, t0 + lines.length * .35 + .8, lt));
+      const w = Math.max(...lines.map(l => measure(l, { f: F.mark, s: size })));
+      ctx.save(); ctx.translate(x, y + (lines.length - 1) * size * 1.05 + size * .62); ctx.rotate(rot); brush(0, 0, w * k, 7, col === '#ffffff' ? '#ff6f9f' : col, x); ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+const DOTX0 = 1150, DOT_GAP = 262, TL_Y = 706;
+function timeline(t, ch, lt, a) {
+  if (a <= 0) return;
+  const scroll = ch.i === 0 ? 1 : lerp(Math.max(1, ch.i - 1), ch.i, eio(inv(.1, 1.3, lt)));
+  const dx = i => DOTX0 + (i - scroll) * DOT_GAP;
+  ctx.save(); ctx.globalAlpha = a;
+  const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(255,255,255,.1)'); g.addColorStop(.5, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,.12)');
+  ctx.fillStyle = g; ctx.fillRect(40, TL_Y - 1, W - 80, 2);
+  const cur = ch.i;
+  for (const c of CH) {
+    if (!c.dot) continue;
+    const x = dx(c.i); if (x < -200 || x > W + 200) continue;
+    const past = c.i <= cur;
+    if (c.i < cur) rect(Math.max(40, x), TL_Y - 1, DOT_GAP, 2, hexA(c.col, .7));
+    const on = c.i === cur;
+    if (on) light(x, TL_Y, 40, c.col, 1);
+    ctx.fillStyle = past ? c.col : 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(x, TL_Y, on ? 8 : 5, 0, Math.PI * 2); ctx.fill();
+    T(c.dot === 'ONLINE' ? '2013' : c.year, x, TL_Y + 24, { f: F.mono, s: on ? 19 : 16, w: 600, c: past ? '#fff' : 'rgba(255,255,255,.45)', glow: 'rgba(0,0,0,.9)', gb: 8 });
+    T(c.dot, x, TL_Y + 48, { f: F.ui, s: on ? 20 : 16, w: 600, ls: 1, c: past ? (on ? c.col : '#d8d0e0') : 'rgba(255,255,255,.35)', glow: 'rgba(0,0,0,.9)', gb: 8 });
+  }
+  for (const c of CH) {
+    if (c.i > cur || !cards[c.id]) continue;
+    const x = dx(c.i), dist = Math.abs(c.i - scroll);
+    if (x < 700 || x > W + 200) continue;
+    const fade = inv(700, 880, x);
+    const drop = c.i === cur ? eoB(inv(.7, 1.3, lt)) : 1;
+    const bw = lerp(250, 160, clamp(dist)), bh = bw * 4 / 3;
+    ctx.save(); ctx.globalAlpha = a * fade * (c.i === cur ? inv(.7, .8, lt) : lerp(1, .7, clamp(dist)));
+    ctx.translate(x, TL_Y - 26 - bh / 2 - (1 - drop) * 160); ctx.rotate((hash(c.i * 3) - .5) * .08 + (1 - drop) * .3);
+    ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(-bw / 2 + 8, -bh / 2 + 10, bw, bh);
+    ctx.fillStyle = '#ece4d4'; ctx.fillRect(-bw / 2 - 5, -bh / 2 - 5, bw + 10, bh + 10);
+    ctx.drawImage(cards[c.id], -bw / 2, -bh / 2, bw, bh);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+function pocketCards(lt, a) {
+  const list = [['GAME BOY ADVANCE', '2004', 'GTA', 'ADVANCE', '#8a6bff'], ['PSP', '2005', 'LIBERTY CITY', 'STORIES', '#39b6ff'], ['PSP', '2006', 'VICE CITY', 'STORIES', '#ff4fa3'], ['NINTENDO DS', '2009', 'CHINATOWN', 'WARS', '#ffc93c']];
+  list.forEach((c, i) => {
+    const k = eoB(inv(1.0 + i * .45, 1.5 + i * .45, lt)); if (k <= 0) return;
+    const cx = 1010 + i * 230, cy = 270 + Math.sin(lt * 2 + i) * 6;
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(cx, cy); ctx.scale(k, 1); ctx.rotate((i - 1.5) * .03);
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; rrect(-104, -134, 220, 290, 14); ctx.fill();
+    ctx.fillStyle = '#16151d'; rrect(-110, -145, 220, 290, 14); ctx.fill(); ctx.strokeStyle = c[4]; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = c[4]; ctx.fillRect(-110, 110, 220, 12);
+    ctx.restore();
+    if (k > .6) {
+      const al = inv(.6, 1, k) * a;
+      T(c[0], cx, cy - 115, { f: F.mono, s: 14, ls: 3, c: c[4], a: al });
+      T(c[1], cx, cy - 40, { s: 88, c: '#fff', a: al });
+      T(c[2], cx, cy + 40, { s: 30, ls: 1, c: '#fff', a: al });
+      T(c[3], cx, cy + 76, { s: 30, ls: 1, c: c[4], a: al });
+    }
+  });
+}
+function subtitles(ch, lt) {
+  if (!ch.say) return;
+  const n = ch.say.length, t0 = 1.3, slot = (ch.d - t0 - .4) / n;
+  const i = Math.floor((lt - t0) / slot); if (i < 0 || i >= n) return;
+  const s0 = t0 + i * slot, str = ch.say[i];
+  const words = str.split(' '), shown = Math.min(words.length, Math.floor(inv(s0, s0 + slot * .55, lt) * words.length) + 1);
+  const o = { f: F.ui, w: 400, s: 31 };
+  const out = []; let line = '';
+  for (const w of words) { const tst = line ? line + ' ' + w : w; if (measure(tst, o) > 820 && line) { out.push(line); line = w; } else line = tst; }
+  out.push(line);
+  let count = 0;
+  const vis = out.map(l => { const ws = l.split(' '); const take = clamp(shown - count, 0, ws.length); count += ws.length; return ws.slice(0, take).join(' '); });
+  const a = 1 - inv(s0 + slot - .25, s0 + slot, lt);
+  vis.forEach((l, j) => {
+    if (!l) return;
+    const y = 952 + (j - (out.length - 1)) * 46 + 23, w = measure(l, o);
+    rect(80, y - 22, w + 26, 44, '#08080a', .74 * a);
+    T(l, 93, y + 1, { ...o, al: 'left', c: '#fff', a });
+  });
+}
+function countdown(lt, a) {
+  if (a <= 0) return;
+  const ms = Math.max(0, RELEASE - Date.now());
+  const vals = [[Math.floor(ms / 864e5), 'DAYS'], [Math.floor(ms / 36e5) % 24, 'HRS'], [Math.floor(ms / 6e4) % 60, 'MIN'], [Math.floor(ms / 1e3) % 60, 'SEC']];
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(1440, 470); ctx.rotate(-.03);
+  ctx.fillStyle = 'rgba(12,4,20,.82)'; rrect(-10, -70, 440, 150, 14); ctx.fill(); ctx.strokeStyle = '#ff6f9f'; ctx.lineWidth = 3; ctx.stroke();
+  T('OUT IN', 14, -46, { f: F.mark, s: 26, al: 'left', c: '#ff9ec3' });
+  vals.forEach(([v, l], i) => { T(String(v).padStart(2, '0'), 60 + i * 104, 6, { s: 62, c: '#fff' }); T(l, 60 + i * 104, 56, { f: F.mono, s: 14, ls: 4, c: '#ff9ec3' }); });
+  ctx.restore();
+}
+function introTitle(lt, ch) {
+  const a = inv(.6, 1.4, lt) * (1 - inv(ch.d - 1.6, ch.d - .6, lt));
+  if (a <= 0) return;
+  writeOn('The History of', W / 2 - 330, 310, -.05, 70, '#ff6f9f', lt, .7, .8, 'left');
+  const k = eoB(inv(1.3, 1.8, lt));
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, 420); ctx.scale(lerp(1.3, 1, k), lerp(1.3, 1, k));
+  T('GRAND THEFT AUTO', 0, 0, { f: F.ui, w: 900, s: 150, c: '#f7f1e6', a: inv(1.3, 1.4, lt), shadow: 'rgba(0,0,0,.45)', sx: 6, sy: 6 });
+  ctx.restore();
+  brush(W / 2 - 420, 520, 840 * eo3(inv(1.8, 2.4, lt)), 12, '#e8303e', 3);
+  T('FROM A BUG IN DUNDEE TO GTA VI  ·  1995 → 2026', W / 2, 580, { f: F.mono, s: 24, w: 600, ls: 6, c: '#ffe2c4', a: a * inv(2.4, 3, lt) });
+}
+function outro(lt, ch) {
+  const k = inv(ch.d - 8.2, ch.d - 7.4, lt);
+  if (k <= 0) return 0;
+  rect(0, 0, W, 700, '#07030c', k * .72);
+  T('Thirty-one years after a bug in Dundee,', W / 2, 250, { f: F.ui, st: 'italic', w: 800, s: 64, c: '#fff', a: inv(ch.d - 7.6, ch.d - 7, lt) * (1 - inv(ch.d - 3.6, ch.d - 3.1, lt)) });
+  T('the chase is still on.', W / 2, 340, { f: F.ui, st: 'italic', w: 800, s: 64, c: '#ff9ec3', a: inv(ch.d - 6.6, ch.d - 6, lt) * (1 - inv(ch.d - 3.6, ch.d - 3.1, lt)) });
+  FX.police = inv(ch.d - 6.6, ch.d - 6, lt) * (1 - inv(ch.d - 3.4, ch.d - 3, lt));
+  if (lt > ch.d - 3.1) {
+    const kk = eo3(inv(ch.d - 3.1, ch.d - 2.3, lt));
+    T('“Ah shit, here we go again.”', W / 2, 300, { f: F.ui, st: 'italic', w: 800, s: lerp(120, 104, kk), c: '#fff', a: inv(ch.d - 3.1, ch.d - 2.8, lt) });
+    T('A FAN-MADE HISTORY  ·  NOT AFFILIATED WITH ROCKSTAR GAMES OR TAKE-TWO', W / 2, 420, { f: F.mono, s: 20, ls: 5, c: '#b7aec4', a: inv(ch.d - 2.4, ch.d - 1.8, lt) });
+  }
+  return k;
+}
+
+/* =====================================================================
+   FRAME
+   ===================================================================== */
+function drawArt(ch, lt) { ctx.save(); ch.art(lt); ctx.restore(); }
+function frame(t) {
+  t = clamp(t, 0, DUR - 1e-3);
+  const ch = chAt(t), lt = t - ch.t0, prev = CH[ch.i - 1];
+  Object.assign(FX, { bloom: .32, glitch: 0, chroma: 0, vhs: 0, shake: 0, police: 0 });
+  for (const [ht, kind, v, fl] of ch.hits) {
+    if (kind !== 'boom' || lt < ht) continue;
+    const e = (v ?? 1) * Math.exp(-(lt - ht) * 6);
+    if (fl && fl.includes('s')) FX.shake += e * .5;
+    FX.chroma += e * .5;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const sh = FX.shake, z = 1 + sh * .02;
+  const jx = (hash(Math.floor(t * 60)) - .5) * 24 * sh, jy = (hash(Math.floor(t * 60) + 3) - .5) * 24 * sh;
+  ctx.setTransform(S * z, 0, 0, S * z, S * (W / 2 - W / 2 * z + jx), S * (H / 2 - H / 2 * z + jy));
+
+  // art, with a slanted wipe from the previous chapter
+  const wk = prev ? eio(inv(0, 1.0, lt)) : 1;
+  if (wk < 1) {
+    drawArt(prev, prev.d - .01);
+    const e = lerp(-400, W + 400, wk);
+    ctx.save(); ctx.beginPath(); ctx.moveTo(e - 300, 0); ctx.lineTo(e + 100, 0); ctx.lineTo(e - 100, H); ctx.lineTo(e - 500, H); ctx.lineTo(-800, H); ctx.lineTo(-800, 0); ctx.closePath(); ctx.clip();
+    drawArt(ch, lt); ctx.restore();
+    ctx.save(); ctx.strokeStyle = ch.col; ctx.lineWidth = 8; ctx.shadowColor = ch.col; ctx.shadowBlur = 30; ctx.beginPath(); ctx.moveTo(e + 100, 0); ctx.lineTo(e - 100, H); ctx.stroke(); ctx.restore();
+  } else drawArt(ch, lt);
+  if (ch.pocket) pocketCards(lt, 1);
+  drawFigures(ch.fig, lt, inv(.6, 1.6, lt) * (ch.id === 'vi' ? 1 - inv(ch.d - 8.2, ch.d - 7.4, lt) : 1));
+  if (prev && prev.fig && lt < .6) drawFigures(prev.fig, prev.d, 1 - inv(0, .6, lt));
+
+  // readability gradient behind the left column
+  if (ch.year) {
+    const g = ctx.createLinearGradient(0, 0, 900, 0); g.addColorStop(0, 'rgba(6,4,12,.88)'); g.addColorStop(.7, 'rgba(6,4,12,.55)'); g.addColorStop(1, 'rgba(6,4,12,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 900, 760);
+  }
+  highway(t, ch, lt);
+  if (ch.rain) rain(t, 160, .16, 1.1);
+  bloom(FX.bloom);
+  ctx.setTransform(S * z, 0, 0, S * z, S * (W / 2 - W / 2 * z + jx), S * (H / 2 - H / 2 * z + jy));
+
+  const endK = ch.id === 'vi' ? outro(lt, ch) : 0;
+  const colA = ch.id === 'vi' ? 1 - inv(ch.d - 8.2, ch.d - 7.4, lt) : 1;
+  const tlA = ch.i === 0 ? inv(ch.d - 2.4, ch.d - .6, lt) : colA;
+  timeline(t, ch, lt, tlA);
+  if (prev && prev.year && lt < .5) leftColumn(prev, prev.d, 1 - inv(0, .45, lt), CH[prev.i - 1]);
+  leftColumn(ch, lt, colA, prev);
+  notes(ch, lt, 1);
+  if (ch.id === 'intro') introTitle(lt, ch);
+  if (ch.id === 'vi') countdown(lt, inv(12, 12.6, lt) * colA);
+  void endK;
+  subtitles(ch, lt);
+  if (ch.id === 'intro') {
+    const say = ['Thirty-one years. Seven main games. One of the biggest stories in entertainment.'];
+    const o = { f: F.ui, w: 400, s: 31 }, a = win(lt, 3, ch.d - .4, .3, .3);
+    if (a > 0) { const w = measure(say[0], o); rect(80, 930, w + 26, 44, '#08080a', .74 * a); T(say[0], 93, 953, { ...o, al: 'left', c: '#fff', a }); }
+  }
+
+  chroma(Math.min(1, FX.chroma));
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  police(lt, FX.police);
+  for (const [ht, , , fl] of ch.hits) if (fl && fl.includes('f') && lt >= ht && lt < ht + .5) rect(0, 0, W, H, '#fff', (1 - (lt - ht) / .5) * .6);
+  if (ch.i === 0) rect(0, 0, W, H, '#000', 1 - inv(0, .8, lt));
+  if (ch.id === 'vi') rect(0, 0, W, H, '#000', inv(ch.d - .8, ch.d, lt));
+  ctx.save(); ctx.globalAlpha = EXPORT ? .16 : .4;
+  const gr = grain[Math.floor(t * 24) % 4];
+  const ox = -Math.floor(hash(Math.floor(t * 24)) * 256), oy = -Math.floor(hash(Math.floor(t * 24) + 1) * 256);
+  for (let x = ox; x < W; x += 256) for (let y = oy; y < H; y += 256) ctx.drawImage(gr, x, y);
+  ctx.restore();
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * .4, W / 2, H / 2, H * 1.1);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+
 function sizeBuffers() { if (tmp.width !== cv.width || tmp.height !== cv.height) { tmp.width = cv.width; tmp.height = cv.height; } }
 function bloom(k) {
   if (k <= 0) return;
@@ -1428,102 +1426,6 @@ function vhs(k, t) {
   const by = ((t * 260) % (H + 200)) - 100;
   ctx.globalAlpha = .35 * k; ctx.drawImage(grain[Math.floor(t * 30) % 4], 0, 0, 256, 20, 0, by, W, 60);
   ctx.restore();
-}
-function transitionFX(sc, lt, idx, t) {
-  const next = SCENES[idx + 1];
-  const kin = 1 - inv(0, .4, lt), kout = next ? inv(sc.d - .35, sc.d, lt) : 0;
-  const apply = (type, k) => {
-    if (!type || k <= 0) return;
-    if (type === 'glitch') glitch(k, Math.floor(t * 30));
-    else if (type === 'whip') whip(k, lt < 1 ? -1 : 1);
-    else if (type === 'flash') rect(0, 0, W, H, '#fff', k * .9);
-    else if (type === 'dip') rect(0, 0, W, H, '#000', k);
-    else if (type === 'burn') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowDisc(W * .1, H * .9, 1400 * k + 200, 'rgba(255,120,30,.9)', k); glowDisc(W * .8, H * .2, 900 * k, 'rgba(255,220,120,.7)', k); ctx.restore(); }
-  };
-  ctx.save(); ctx.setTransform(S, 0, 0, S, 0, 0);
-  apply(sc.tin, kin);
-  if (next) apply(next.tin, kout);
-  ctx.restore();
-}
-function captions(sc, lt) {
-  for (const [a, b, str] of sc.caps) {
-    if (lt < a || lt > b) continue;
-    const out = inv(b - .35, b, lt);
-    const words = str.split(' ');
-    const o = { f: F.ui, w: 600, s: 44 };
-    const clean = words.map(w => w.replace(/\*/g, ''));
-    const sp = measure(' ', o), widths = clean.map(w => measure(w, o));
-    let x = W / 2 - (widths.reduce((p, q) => p + q, 0) + sp * (words.length - 1)) / 2;
-    const y = H - 168;
-    words.forEach((w, i) => {
-      const k = eo3(inv(a + i * .055, a + i * .055 + .35, lt));
-      T(clean[i], x, y + (1 - k) * 22 - out * 10, { ...o, al: 'left', c: w.includes('*') ? sc.col : '#f6f2ea', a: k * (1 - out), glow: 'rgba(0,0,0,.9)', gb: 16 });
-      x += widths[i] + sp;
-    });
-  }
-}
-function overlays(t, sc, lt) {
-  const idx = SCENES.indexOf(sc);
-  ctx.setTransform(S, 0, 0, S, 0, 0);
-  for (const [ht, , , fl] of sc.hits) if (fl && fl.includes('f') && lt >= ht && lt < ht + .5) rect(0, 0, W, H, '#fff', (1 - (lt - ht) / .5) * .7);
-  police(lt, FX.police);
-  transitionFX(sc, lt, idx, t);
-  ctx.setTransform(S, 0, 0, S, 0, 0);
-  captions(sc, lt);
-  ctx.save(); ctx.globalAlpha = EXPORT ? .2 : .5;
-  const g = grain[Math.floor(t * 24) % 4];
-  const ox = -Math.floor(hash(Math.floor(t * 24)) * 256), oy = -Math.floor(hash(Math.floor(t * 24) + 1) * 256);
-  for (let x = ox; x < W; x += 256) for (let y = oy; y < H; y += 256) ctx.drawImage(g, x, y);
-  ctx.restore();
-  const vg = ctx.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * 1.05);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
-  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-  let bar = 70;
-  if (sc.id === 'vi') bar = 70 * (1 - eio(inv(.3, 2.2, lt))) + 70 * eio(inv(18.6, 19.4, lt));
-  if (bar > .5) { rect(0, 0, W, bar, '#000'); rect(0, H - bar, W, bar, '#000'); }
-  const ta = sc.id === 'vi' ? (1 - inv(.3, 1.2, lt)) : 1;
-  if (idx > 0 && ta > 0) {
-    T(`${String(idx).padStart(2, '0')} / ${sc.tag}`, 60, 36, { f: F.mono, s: 20, ls: 5, al: 'left', c: sc.col, a: ta * inv(.3, .9, lt) });
-    const yr = lerp(sc.y[0], sc.y[1], inv(0, sc.d, lt));
-    const Y0 = 1995, Y1 = 2027, xa = 380, xb = W - 380, yy = H - 34;
-    const X = y => lerp(xa, xb, (y - Y0) / (Y1 - Y0));
-    ctx.save(); ctx.globalAlpha = ta;
-    rect(xa, yy, xb - xa, 2, 'rgba(255,255,255,.18)');
-    rect(xa, yy, X(yr) - xa, 2, sc.col);
-    [1997, 1999, 2001, 2002, 2004, 2008, 2013, 2026].forEach(y => {
-      const on = yr >= y - .01;
-      rect(X(y) - 1, yy - 6, 2, 14, on ? sc.col : 'rgba(255,255,255,.3)');
-      T(String(y).slice(2), X(y), yy - 20, { f: F.mono, s: 15, c: on ? '#fff' : 'rgba(255,255,255,.4)' });
-    });
-    light(X(yr), yy + 1, 26, sc.col, .9);
-    rect(X(yr) - 5, yy - 4, 10, 10, '#fff');
-    ctx.restore();
-    T(String(Math.floor(yr)), W - 60, 36, { f: F.mono, s: 20, ls: 5, al: 'right', c: '#fff', a: ta * .8 });
-  }
-}
-
-function render(t) {
-  t = clamp(t, 0, DUR - 1e-3);
-  const sc = sceneAt(t), lt = t - sc.t0;
-  Object.assign(FX, { bloom: sc.bloom, glitch: 0, chroma: 0, vhs: 0, shake: 0, police: 0 });
-  for (const [ht, kind, v, fl] of sc.hits) {
-    if (kind !== 'boom' || lt < ht) continue;
-    const e = (v ?? 1) * Math.exp(-(lt - ht) * 6);
-    if (fl && fl.includes('s')) FX.shake += e;
-    FX.chroma += e * .8;
-  }
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0; ctx.filter = 'none';
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
-  const sh = FX.shake, z = 1 + sh * .025;
-  const jx = (hash(Math.floor(t * 60)) - .5) * 30 * sh, jy = (hash(Math.floor(t * 60) + 3) - .5) * 30 * sh;
-  ctx.setTransform(S * z, 0, 0, S * z, S * (W / 2 - W / 2 * z + jx), S * (H / 2 - H / 2 * z + jy));
-  ctx.save(); sc.draw(lt, sc); ctx.restore();
-  bloom(FX.bloom);
-  chroma(Math.min(1.2, FX.chroma));
-  glitch(FX.glitch, Math.floor(t * 30) + 99);
-  vhs(FX.vhs, t);
-  overlays(t, sc, lt);
 }
 
 /* ================= AUDIO ================= */
@@ -1610,122 +1512,115 @@ const I = {
     s.connect(f); f.connect(g); route(b, g, { to: 'dry', send: .7, pan: -.3 }); s.start(t); s.stop(t + dur + .05);
   },
 };
+
 const chord = (root, q) => [root, root + (q === 'm' ? 3 : 4), root + 7];
 const STYLES = {
-  rain: { fn(b, k, t, sp, lt) {
+  rain(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
-    if (lt < 2.2) { if (hash(k * 1.3) > .5) N(b, { t, a: .001, peak: .08, dec: .05, ft: 'bandpass', ff: 1500 + hash(k) * 5000, q: 3, to: 'dry' }); if (s % 4 === 0) I.pad(b, t, [62, 65, 69], 1.2, .6, 1800); return; }
-    if (lt < 5.8) {
-      for (let j = 0; j < 4; j++) N(b, { t: t + j * sp / 4, a: .001, peak: .07, dec: .04, ft: 'bandpass', ff: 1200 + hash(k * 4 + j) * 5500, q: 4, to: 'dry', pan: hash(k + j) - .5 });
-      if (lt - sp < 2.2) V(b, { f: 2600, glide: 500, gt: 3.4, t, a: .05, peak: .025, dec: 3.5, to: 'dry' });
-      return;
-    }
-    if (lt < 6.3) return;
     if (s % 4 === 0) N(b, { t, a: .4, peak: .07, dec: 1.3, ft: 'lowpass', ff: 1100, to: 'dry' });
     if (s % 8 === 0) V(b, { type: 'sawtooth', f: mtof(38), t, a: 1.2, peak: .09, dec: 2.2, lp: 220, send: .3 });
-    if ((s === 0 || s === 8) && lt > 7) I.pluck(b, t, [62, 65, 69, 64, 62, 60][(bar * 2 + s / 8) % 6], .7, 2.6);
-  } },
-  chip: { fn(b, k, t, sp, lt, sc) {
+    if (s === 0 || s === 8) I.pluck(b, t, [62, 65, 69, 64, 62, 60][(bar * 2 + s / 8) % 6], .7, 2.6);
+    if (bar >= 2 && (s === 4 || s === 12)) I.pluck(b, t, [74, 72, 77, 76][bar % 4], .35, 1.8);
+  },
+  chip(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
-    const [r, q] = [[57, 'm'], [53, 'M'], [48, 'M'], [55, 'M']][bar % 4], c = chord(r, q);
-    const tones = [c[0], c[1], c[2], c[0] + 12];
-    I.sq(b, t, tones[[0, 1, 2, 3, 2, 1, 2, 3][s % 8]] + 12, sc.id === 'race' && lt < 4 ? .6 : 1, .11, s % 2 ? .3 : -.3);
+    const [r, q] = [[57, 'm'], [53, 'M'], [48, 'M'], [55, 'M']][bar % 4], cc = chord(r, q), tones = [cc[0], cc[1], cc[2], cc[0] + 12];
+    I.sq(b, t, tones[[0, 1, 2, 3, 2, 1, 2, 3][s % 8]] + 12, .8, .11, s % 2 ? .3 : -.3);
     if (s % 4 === 0) V(b, { type: 'square', f: mtof(r - 12), t, a: .002, peak: .1, dec: .18, lp: 700 });
-    if (!(sc.id === 'race' && lt < 4.4)) {
+    if (bar >= 1) {
       if (s === 0 || s === 8 || s === 10) I.kick(b, t, .8);
       if (s === 4 || s === 12) N(b, { t, a: .001, peak: .25, dec: .09, ft: 'highpass', ff: 2500, to: 'dry', send: .2 });
       if (s % 2 === 0) I.hat(b, t, .5, .4);
     }
-  } },
-  dark: { fn(b, k, t, sp, lt) {
+  },
+  dark(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
     const [r, q] = [[40, 'm'], [36, 'M'], [45, 'm'], [47, 'M']][bar % 4];
     if (s === 0) I.pad(b, t, chord(r + 12, q), sp * 16, 1, 900);
-    const full = lt > 8.4;
-    if (s % 2 === 0 && lt > 3) I.bass(b, t, r, full ? 1 : .5, .16, full ? 700 : 300);
-    if (full) {
+    if (s % 2 === 0) I.bass(b, t, r, bar >= 1 ? 1 : .5, .16, bar >= 1 ? 700 : 300);
+    if (bar >= (c.id === 'intro' ? 2 : 1)) {
       if (s === 0 || s === 6 || s === 8) I.kick(b, t);
       if (s === 4 || s === 12) I.snare(b, t, .9);
       I.hat(b, t, s % 4 === 2 ? .9 : .4, s % 2 ? .35 : -.35);
       if (s === 0 && bar % 2 === 0) I.lead(b, t, r + 24 + 7, .6, .9);
     }
-  } },
-  synth: { fn(b, k, t, sp, lt) {
+  },
+  synth(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
-    const [r, q] = [[57, 'm'], [53, 'M'], [48, 'M'], [55, 'M']][bar % 4], c = chord(r, q);
-    if (s === 0) I.pad(b, t, c, sp * 16, 1.1, 1600);
-    if (lt < 1.07) return;
+    const [r, q] = [[57, 'm'], [53, 'M'], [48, 'M'], [55, 'M']][bar % 4], cc = chord(r, q);
+    if (s === 0) I.pad(b, t, cc, sp * 16, 1.1, 1600);
+    if (bar < 1) return;
     if (s % 4 === 0) I.kick(b, t);
     if (s === 4 || s === 12) I.snare(b, t, 1, .34);
     if (s % 4 === 2) I.hat(b, t, .8, .3);
     if (s % 2 === 0) I.bass(b, t, r - 12 + (s % 4 === 2 ? 12 : 0), 1, .18, 800);
-    I.sq(b, t, [c[0], c[1], c[2], c[1]][s % 4] + 24, .5, .09, Math.sin(k * .7) * .6);
-  } },
-  boom: { fn(b, k, t, sp, lt) {
+    I.sq(b, t, [cc[0], cc[1], cc[2], cc[1]][s % 4] + 24, .5, .09, Math.sin(k * .7) * .6);
+  },
+  boom(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
-    const [r, q] = [[50, 'm'], [46, 'M'], [43, 'm'], [45, 'M']][bar % 4], c = chord(r, q);
-    if (s === 0) I.pad(b, t, c, sp * 16, .7, 1000);
-    const quote = lt > 7.8 && lt < 11.7;
+    const [r, q] = [[50, 'm'], [46, 'M'], [43, 'm'], [45, 'M']][bar % 4], cc = chord(r, q);
+    if (s === 0) I.pad(b, t, cc, sp * 16, .7, 1000);
     if (s === 0 || s === 7 || s === 10) { I.sub(b, t, r - 12); I.bass(b, t, r - 12, .4, .3, 300); }
-    if (quote) return;
+    if (bar < 1) return;
     if (s === 0 || s === 7 || s === 10) I.kick(b, t);
     if (s === 4 || s === 12) I.snare(b, t, 1, .2);
     if (s % 2 === 0) I.hat(b, t + (s % 4 === 2 ? sp * .33 : 0), .7, .3);
     if (s === 0 && bar % 2 === 0) I.whistle(b, t, r + 24 + 7);
-  } },
-  pad: { fn(b, k, t, sp, lt) {
+  },
+  pad(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
-    const [r, q] = [[48, 'm'], [44, 'M'], [51, 'M'], [46, 'M']][bar % 4], c = chord(r, q);
-    if (s === 0) { I.pad(b, t, c, sp * 16, 1.1, 800); V(b, { type: 'sawtooth', f: mtof(r - 24), t, a: .5, peak: .08, dec: sp * 16, lp: 200 }); }
-    if (s === 0 || s === 6 || s === 10) I.pluck(b, t, c[[0, 2, 1][[0, 6, 10].indexOf(s)]] + 12, .8, 1.6);
+    const [r, q] = [[48, 'm'], [44, 'M'], [51, 'M'], [46, 'M']][bar % 4], cc = chord(r, q);
+    if (s === 0) { I.pad(b, t, cc, sp * 16, 1.1, 800); V(b, { type: 'sawtooth', f: mtof(r - 24), t, a: .5, peak: .08, dec: sp * 16, lp: 200 }); }
+    if (s === 0 || s === 6 || s === 10) I.pluck(b, t, cc[[0, 2, 1][[0, 6, 10].indexOf(s)]] + 12, .8, 1.6);
     if (s % 4 === 0) N(b, { t, a: .3, peak: .05, dec: 1.2, ft: 'lowpass', ff: 1400, to: 'dry' });
-    if (lt > 1.3 && s % 8 === 0) I.kick(b, t, .55);
-    if (lt > 1.3 && s === 12) I.snare(b, t, .35, .4);
-  } },
-  trap: { fn(b, k, t, sp, lt) {
+    if (bar >= 1 && s % 8 === 0) I.kick(b, t, .55);
+    if (bar >= 1 && s === 12) I.snare(b, t, .35, .4);
+  },
+  trap(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
-    const [r, q] = [[41, 'm'], [37, 'M'], [44, 'M'], [39, 'M']][bar % 4], c = chord(r, q);
-    if (s === 0) I.pad(b, t, c.map(m => m + 12), sp * 16, 1, 1400);
-    if (lt < 1.4 || (lt > 7.0 && lt < 7.7)) return;
+    const [r, q] = [[41, 'm'], [37, 'M'], [44, 'M'], [39, 'M']][bar % 4], cc = chord(r, q);
+    if (s === 0) I.pad(b, t, cc.map(m => m + 12), sp * 16, 1, 1400);
+    if (bar < 1) return;
     if (s === 0 || s === 6 || s === 10) I.e808(b, t, r - 12 + (s === 10 ? 3 : 0));
     if (s === 0) I.kick(b, t, .6);
     if (s === 8) I.clap(b, t);
     if (bar % 2 === 1 && s >= 12) { I.hat(b, t, .6, -.3); I.hat(b, t + sp / 2, .5, .3); }
     else if (s % 2 === 0) I.hat(b, t, .7, .2);
-    if (s % 4 === 3 && lt > 10) I.sq(b, t, c[bar % 3] + 24, .45, .14, .4);
-  } },
-  tick: { fn(b, k, t, sp, lt) {
-    const s = k % 16;
-    if (s % 4 === 0 && lt < 11.6) I.tick(b, t, (k / 4) % 2 === 0);
-    if (s === 0) V(b, { type: 'sawtooth', f: mtof(38 + Math.floor(lt / 3)), t, a: 1, peak: .09, dec: sp * 16, lp: 320, send: .3 });
-    if (lt > 11.4 && lt < 15 && s % 4 === 0) I.kick(b, t, .8);
-    if (lt > 13.9 && lt < 14.95) { if (lt > 14.45 || s % 2 === 0) I.snare(b, t, .3 + (lt - 13.9) * .6, .1); }
-    if (lt >= 15 && s === 0) I.pad(b, t, [57, 61, 64, 69], sp * 16, 1.2, 2200);
-  } },
-  anthem: { fn(b, k, t, sp, lt) {
+    if (s % 4 === 3 && bar >= 3) I.sq(b, t, cc[bar % 3] + 24, .45, .14, .4);
+  },
+  tick(b, k, t, sp, lt, c) {
     const s = k % 16, bar = Math.floor(k / 16);
-    const [r, q] = [[54, 'm'], [50, 'M'], [57, 'M'], [52, 'M']][bar % 4], c = chord(r, q);
-    if (s === 0) I.pad(b, t, c, sp * 16, 1.2, 1800);
-    const full = lt > 8.89 && lt < 18.9;
-    if (!full) { if (s % 2 === 0 && lt < 8.89) I.sq(b, t, [c[0], c[1], c[2], c[1]][(s / 2) % 4] + 12, .35, .2, Math.sin(k) * .5); return; }
+    if (s % 4 === 0) I.tick(b, t, (k / 4) % 2 === 0);
+    if (s === 0) V(b, { type: 'sawtooth', f: mtof(38 + bar), t, a: 1, peak: .09, dec: sp * 16, lp: 320, send: .3 });
+    if (bar >= 5 && s % 4 === 0) I.kick(b, t, .8);
+    if (bar === c.bars - 1 && s % 2 === 0) I.snare(b, t, .3 + s * .04, .1);
+  },
+  anthem(b, k, t, sp, lt, c) {
+    const s = k % 16, bar = Math.floor(k / 16);
+    const [r, q] = [[54, 'm'], [50, 'M'], [57, 'M'], [52, 'M']][bar % 4], cc = chord(r, q);
+    if (s === 0) I.pad(b, t, cc, sp * 16, 1.2, 1800);
+    const full = bar >= 2 && lt < c.d - 8.2;
+    if (!full) { if (s % 2 === 0 && bar < 2) I.sq(b, t, [cc[0], cc[1], cc[2], cc[1]][(s / 2) % 4] + 12, .35, .2, Math.sin(k) * .5); return; }
     if (s % 4 === 0) I.kick(b, t);
     if (s === 4 || s === 12) I.snare(b, t, 1.1, .3);
     if (s % 4 === 2) I.hat(b, t, .9, .3);
     if (s % 2 === 0) I.bass(b, t, r - 24 + (s % 4 === 2 ? 12 : 0), 1, .2, 900);
     const mot = { 0: 2, 3: 1, 6: 0, 10: 1, 12: 2 };
-    if (s in mot) I.lead(b, t, c[mot[s]] + 12);
-  } },
+    if (s in mot) I.lead(b, t, cc[mot[s]] + 12);
+  },
 };
+const VI = CH[CH.length - 1];
+VI.hits = [[0, 'whoosh', 1], [.55, 'boom', .6, 's'], [VI.B * 2, 'boom', .8, 's'], [VI.d - 6.6, 'siren', 2.8], [VI.d - 3.1, 'boom', .6, 's']];
 function schedule(b, t0, t1, toAc) {
-  for (const sc of SCENES) {
-    const a = Math.max(t0, sc.t0), e = Math.min(t1, sc.t1); if (a >= e) continue;
-    const sp = sc.B / 16;
-    for (let k = Math.ceil((a - sc.t0) / sp - 1e-9); ; k++) {
-      const tl = sc.t0 + k * sp; if (tl >= e) break;
-      STYLES[sc.music].fn(b, k, toAc(tl), sp, tl - sc.t0, sc);
+  for (const c of CH) {
+    const a = Math.max(t0, c.t0), e = Math.min(t1, c.t1); if (a >= e) continue;
+    const sp = c.B / 16;
+    for (let k = Math.ceil((a - c.t0) / sp - 1e-9); ; k++) {
+      const tl = c.t0 + k * sp; if (tl >= e) break;
+      STYLES[c.music](b, k, toAc(tl), sp, tl - c.t0, c);
     }
-    for (const [ht, kind, v] of sc.hits) {
-      const tl = sc.t0 + ht; if (tl < a || tl >= e) continue;
+    for (const [ht, kind, v] of c.hits) {
+      const tl = c.t0 + ht; if (tl < a || tl >= e) continue;
       I[kind](b, toAc(tl), v ?? 1);
     }
   }
@@ -1738,7 +1633,7 @@ function masterChain(A) {
 
 /* ================= EXPORT HOOKS ================= */
 window.__DUR = DUR;
-window.__render = t => render(t);
+window.__render = t => frame(t);
 window.__audioWav = async () => {
   const sr = 44100, A = new OfflineAudioContext(2, Math.ceil(sr * DUR), sr);
   schedule(makeBus(A, masterChain(A)), 0, DUR, t => t);
@@ -1762,21 +1657,19 @@ function fit() {
   cv.width = Math.max(320, Math.round(r.width * dpr)); cv.height = Math.round(cv.width * 9 / 16); S = cv.width / W;
 }
 fit();
+let ready = false;
 window.__ready = document.fonts.ready.then(() => Promise.all(
-  ['80px Anton', '80px "Mr Dafoe"', '40px "Press Start 2P"', '30px "IBM Plex Mono"', '600 30px "IBM Plex Mono"', 'italic 800 60px Archivo', '600 30px Archivo'].map(f => document.fonts.load(f).catch(() => null))
-));
+  ['80px Anton', '80px "Mr Dafoe"', '40px "Press Start 2P"', '30px "IBM Plex Mono"', '600 30px "IBM Plex Mono"', 'italic 800 60px Archivo', '900 60px Archivo', '800 30px Archivo', '400 30px Archivo', '600 30px Archivo', '60px "Permanent Marker"'].map(f => document.fonts.load(f).catch(() => null))
+)).then(() => { makeCards(); ready = true; });
 if (EXPORT) return;
 
 let tl = 0, playing = false, lastPerf = 0, muted = false;
 let A = null, master = null, sess = null, sessBus = null, acT0 = 0, tlT0 = 0, schedTo = 0;
-const vi = SCENES[SCENES.length - 1];
-const POSTER = vi.t0 + 13.2;
+const POSTER = VI.t0 + 14;
+const render = t => { if (ready) frame(t); else { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#07060b'; ctx.fillRect(0, 0, cv.width, cv.height); } };
 
 function audioStart() {
-  if (!A) {
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    A = new AC(); master = masterChain(A);
-  }
+  if (!A) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; A = new AC(); master = masterChain(A); }
   if (A.state === 'suspended') A.resume();
   audioStop();
   sess = A.createGain(); sess.gain.value = muted ? 0 : 1; sess.connect(master);
@@ -1793,32 +1686,26 @@ function pump() {
   if (ahead > schedTo) { schedule(sessBus, schedTo, Math.min(ahead, DUR), x => acT0 + (x - tlT0)); schedTo = ahead; }
 }
 setInterval(pump, 60);
-
 function setPlaying(p) {
   playing = p;
   $('gate').hidden = true;
   $('ppicon').innerHTML = p ? '<path d="M3 1.5h3.5v13H3zm6.5 0H13v13H9.5z"/>' : '<path d="M3 1.5v13l11-6.5z"/>';
   $('pp').setAttribute('aria-label', p ? 'Pause' : 'Play');
-  if (p) { if (tl >= DUR - .05) tl = 0; lastPerf = performance.now(); audioStart(); requestAnimationFrame(frame); }
+  if (p) { if (tl >= DUR - .05) tl = 0; lastPerf = performance.now(); audioStart(); requestAnimationFrame(loop); }
   else audioStop();
 }
-function seek(t) {
-  tl = clamp(t, 0, DUR - .01);
-  if (playing) audioStart();
-  $('gate').hidden = true;
-  draw();
-}
-function frame(now) {
+function seek(t) { tl = clamp(t, 0, DUR - .01); if (playing) audioStart(); $('gate').hidden = true; draw(); }
+function loop(now) {
   if (!playing) return;
   if (sess && A && A.state === 'running') tl = tlT0 + Math.max(0, A.currentTime - acT0);
   else tl += (now - lastPerf) / 1000;
   lastPerf = now;
   if (tl >= DUR) { tl = DUR; draw(); setPlaying(false); return; }
   pump(); draw();
-  requestAnimationFrame(frame);
+  requestAnimationFrame(loop);
 }
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-let lastScene = null;
+let lastCh = null;
 function draw() {
   render(tl);
   const pct = tl / DUR * 100;
@@ -1826,25 +1713,21 @@ function draw() {
   $('fill').style.width = pct + '%';
   $('time').textContent = `${fmt(tl)} / ${fmt(DUR)}`;
   $('track').setAttribute('aria-valuenow', Math.floor(tl));
-  const sc = sceneAt(tl);
-  if (sc !== lastScene) {
-    lastScene = sc;
-    document.querySelectorAll('.chapters button').forEach(b => { const on = b.dataset.id === sc.id; b.classList.toggle('on', on); b.style.color = on ? sc.col : ''; });
-  }
+  const c = chAt(tl);
+  if (c !== lastCh) { lastCh = c; document.querySelectorAll('.chapters button').forEach(b => { const on = b.dataset.id === c.id; b.classList.toggle('on', on); b.style.color = on ? c.col : ''; }); }
 }
 $('track').setAttribute('aria-valuemax', Math.floor(DUR));
 const segs = $('segs'), fill = $('fill');
-SCENES.forEach(sc => {
-  const a = document.createElement('span'); a.style.flex = sc.d; a.style.background = sc.col; segs.appendChild(a);
-  const b = document.createElement('span'); b.style.flex = 'none'; b.style.background = sc.col; b.style.height = '100%'; b.style.borderRadius = '2px';
-  fill.appendChild(b);
-  const btn = document.createElement('button'); btn.type = 'button'; btn.dataset.id = sc.id;
-  btn.innerHTML = `<i style="background:${sc.col}"></i>${sc.label}`;
-  btn.addEventListener('click', () => { seek(sc.t0 + .01); if (!playing) setPlaying(true); });
+CH.forEach(c => {
+  const a = document.createElement('span'); a.style.flex = c.d; a.style.background = c.col; segs.appendChild(a);
+  const b = document.createElement('span'); b.style.flex = 'none'; b.style.background = c.col; b.style.height = '100%'; b.style.borderRadius = '2px'; fill.appendChild(b);
+  if (!c.label) return;
+  const btn = document.createElement('button'); btn.type = 'button'; btn.dataset.id = c.id;
+  btn.innerHTML = `<i style="background:${c.col}"></i>${c.label}`;
+  btn.addEventListener('click', () => { seek(c.t0 + .01); if (!playing) setPlaying(true); });
   $('chapters').appendChild(btn);
 });
-function sizeFill() { const w = $('track').clientWidth - 2 * (SCENES.length - 1); [...fill.children].forEach((c, i) => { c.style.width = (SCENES[i].d / DUR * w) + 'px'; }); }
-
+function sizeFill() { const w = $('track').clientWidth - 2 * (CH.length - 1); [...fill.children].forEach((c, i) => { c.style.width = (CH[i].d / DUR * w) + 'px'; }); }
 $('bigplay').addEventListener('click', () => { tl = 0; setPlaying(true); });
 $('pp').addEventListener('click', () => setPlaying(!playing));
 cv.addEventListener('click', () => setPlaying(!playing));
@@ -1852,10 +1735,7 @@ $('snd').addEventListener('click', () => {
   muted = !muted; $('snd').textContent = muted ? 'OFF' : 'SND'; $('snd').setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
   if (sess && A) sess.gain.setTargetAtTime(muted ? 0 : 1, A.currentTime, .05);
 });
-$('fs').addEventListener('click', () => {
-  const st = $('stage');
-  try { if (document.fullscreenElement) document.exitFullscreen(); else st.requestFullscreen().catch(() => {}); } catch (e) { /* not supported */ }
-});
+$('fs').addEventListener('click', () => { const st = $('stage'); try { if (document.fullscreenElement) document.exitFullscreen(); else st.requestFullscreen().catch(() => {}); } catch (e) { /* unsupported */ } });
 const track = $('track');
 let dragging = false;
 const trackSeek = e => { const r = track.getBoundingClientRect(); seek((e.clientX - r.left) / r.width * DUR); };
@@ -1871,10 +1751,9 @@ window.addEventListener('keydown', e => {
 let rz;
 window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { fit(); sizeFill(); if (playing || $('gate').hidden) draw(); else render(POSTER); }, 80); });
 document.addEventListener('fullscreenchange', () => setTimeout(() => { fit(); draw(); }, 60));
-
 sizeFill();
 tl = 0; draw(); render(POSTER);
-window.__ready.then(() => { if (!playing && !$('gate').hidden) render(POSTER); });
+window.__ready.then(() => { if (!playing && !$('gate').hidden) render(POSTER); else draw(); });
 setInterval(() => { if (!playing && !$('gate').hidden) render(POSTER); }, 1000);
 })();
 
