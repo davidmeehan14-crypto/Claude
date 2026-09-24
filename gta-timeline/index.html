@@ -111,6 +111,17 @@
   .chapters button i { width: 8px; height: 8px; border-radius: 50%; display: block; }
   .chapters button.on { color: var(--ink); border-color: currentColor; }
   .chapters button:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+  .music { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .music > span { font: 600 11px var(--mono); letter-spacing: .14em; color: var(--dim); margin-right: 4px; }
+  .music button {
+    font: 600 13px var(--ui); color: var(--dim); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left;
+  }
+  .music button small { font: 400 11px var(--mono); color: #6d6678; }
+  .music button.on { color: var(--ink); border-color: var(--hot); box-shadow: inset 0 0 0 1px var(--hot); }
+  .music button:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+  .music .status { font: 400 12px var(--mono); color: var(--sun); }
   .foot { font: 400 12px var(--mono); color: #6d6678; text-align: center; max-width: 70ch; line-height: 1.6; }
   @media (max-width: 560px) {
     .time { min-width: 0; font-size: 11px; }
@@ -140,6 +151,8 @@
     <button class="btn" id="snd" type="button" aria-label="Mute">SND</button>
     <button class="btn" id="fs" type="button" aria-label="Fullscreen"><svg viewBox="0 0 16 16"><path d="M1 1h5v2H3v3H1zm9 0h5v5h-2V3h-3zM1 10h2v3h3v2H1zm12 0h2v5h-5v-2h3z"/></svg></button>
   </div>
+  <div class="music" id="music" role="radiogroup" aria-label="Soundtrack"><span>SOUNDTRACK</span></div>
+  <input type="file" id="upload" accept="audio/*" hidden>
   <div class="chapters" id="chapters"></div>
   <p class="foot">A fan-made history. Grand Theft Auto is a trademark of Take-Two Interactive. This page isn't affiliated with Rockstar Games. Space plays and pauses, arrow keys skip.</p>
 </div>
@@ -1446,7 +1459,7 @@ function impulse(A) {
   return b;
 }
 function makeBus(A, dest) {
-  const dry = A.createGain(); dry.connect(dest);
+  const dry = A.createGain(); dry.gain.value = (typeof TRACKS !== 'undefined' && TRACKS[TRACK].gain) || 1; dry.connect(dest);
   const duck = A.createGain(); duck.connect(dry);
   const rv = A.createConvolver(); rv.buffer = impulse(A);
   const rg = A.createGain(); rg.gain.value = .55; rv.connect(rg); rg.connect(dry);
@@ -1611,18 +1624,122 @@ const STYLES = {
 };
 const VI = CH[CH.length - 1];
 VI.hits = [[0, 'whoosh', 1], [.55, 'boom', .6, 's'], [VI.B * 2, 'boom', .8, 's'], [VI.d - 6.6, 'siren', 2.8], [VI.d - 3.1, 'boom', .6, 's']];
+/* ---------- soundtrack options ---------- */
+const seventh = (root, q) => [root, root + (q === 'm' ? 3 : 4), root + 7, root + (q === 'm' ? 10 : 11)];
+const PROG = {
+  dark: [[52, 'm'], [48, 'M'], [55, 'M'], [50, 'M']],
+  minor: [[57, 'm'], [53, 'M'], [48, 'M'], [55, 'M']],
+  neon: [[54, 'm'], [50, 'M'], [57, 'M'], [52, 'M']],
+  warm: [[50, 'm'], [46, 'M'], [53, 'M'], [48, 'M']],
+};
+const MOOD = { intro: ['dark', 1], origins: ['minor', 0], gta1: ['dark', 2], n99: ['dark', 2], gta3: ['minor', 2], vc: ['neon', 3], sa: ['warm', 3], pocket: ['minor', 1], iv: ['dark', 1], v: ['warm', 3], online: ['neon', 2], wait: ['minor', 1], vi: ['neon', 3] };
+function energyAt(ch, lt) {
+  let e = MOOD[ch.id][1];
+  if (ch.id === 'intro') e = lt < 4.8 ? 0 : 1;
+  if (ch.id === 'wait' && lt > ch.d - 5) e = 2;
+  if (ch.id === 'vi') e = lt < ch.B * 2 ? 1 : lt > ch.d - 8.2 ? 0 : 3;
+  if (ch.i > 0 && lt < .5) e = Math.min(e, 1);
+  return e;
+}
+Object.assign(I, {
+  rhodes(b, t, m, v = 1, dec = 1.6, lp = 2400) { V(b, { f: mtof(m), t, a: .004, peak: .07 * v, dec, send: .35, lp }); V(b, { f: mtof(m) * 2.005, t, a: .002, peak: .022 * v, dec: dec * .4, send: .35 }); },
+  strings: (b, t, notes, dur, v = 1) => notes.forEach((m, i) => [-7, 7].forEach(det => V(b, { type: 'sawtooth', f: mtof(m), t, a: Math.min(1.4, dur * .4), peak: .017 * v, dec: dur, lp: 1700, det, pan: i % 2 ? .35 : -.35, send: .55 }))),
+  keys(b, t, m, v = 1, dec = 1.8) { V(b, { type: 'triangle', f: mtof(m), t, a: .003, peak: .1 * v, dec, send: .45 }); V(b, { f: mtof(m + 12), t, a: .002, peak: .03 * v, dec: dec * .5, send: .45 }); },
+  softkick(b, t, v = 1) { V(b, { f: 110, glide: 45, gt: .1, t, a: .003, peak: .75 * v, dec: .32, to: 'dry' }); const g = b.duck.gain; g.setValueAtTime(1, t); g.linearRampToValueAtTime(.55, t + .015); g.setTargetAtTime(1, t + .03, .12); },
+  snap: (b, t, v = 1, ff = 1800) => N(b, { t, a: .001, peak: .22 * v, dec: .13, ft: 'bandpass', ff, q: .9, to: 'dry', send: .6 }),
+  ohat: (b, t, v = 1) => N(b, { t, a: .002, peak: .045 * v, dec: .16, ft: 'highpass', ff: 7000, to: 'dry', pan: .25 }),
+  timp(b, t, v = 1) { V(b, { f: 72, glide: 52, gt: .4, t, a: .004, peak: .85 * v, dec: 1.9, to: 'dry', send: .5 }); N(b, { t, a: .002, peak: .18 * v, dec: .5, ft: 'lowpass', ff: 300, to: 'dry', send: .4 }); },
+  crackle(b, t, sp) { for (let j = 0; j < 3; j++) if (hash(t * 97 + j) < .45) N(b, { t: t + hash(t * 13 + j) * sp, a: .0005, peak: .015 + hash(t + j) * .03, dec: .004, ft: 'highpass', ff: 2500, to: 'dry' }); },
+  hiss: (b, t, dur) => N(b, { t, a: .2, peak: .01, dec: dur, ft: 'bandpass', ff: 5000, q: .5, to: 'dry' }),
+  synthlead: (b, t, m, dur, v = 1) => [-6, 6].forEach(det => V(b, { type: 'sawtooth', f: mtof(m), t, a: .08, peak: .022 * v, dec: dur, lp: 2600, det, send: .6 })),
+  softwhoosh: (b, t, v = 1) => N(b, { t, a: .35, peak: .08 * v, dec: .4, ft: 'bandpass', ff: 400, fTo: 2500, q: 1.2, to: 'dry', send: .6 }),
+});
+const TRACKS = {
+  drive: { name: 'Night Drive', desc: 'Smooth synthwave cruise', bpm: 100, hit: 'softwhoosh',
+    fn(b, k, t, sp, e, p) {
+      const s = k % 16, bar = Math.floor(k / 16), [r, q] = p[bar % 4], c = chord(r, q), c7 = seventh(r, q);
+      if (s === 0) { I.pad(b, t, c7.map(m => m + 12), sp * 16, .9, 1500); if (e >= 1) V(b, { type: 'sawtooth', f: mtof(r - 24), t, a: .3, peak: .06, dec: sp * 16, lp: 180 }); }
+      if (e === 0) { if (s === 0 || s === 10) I.keys(b, t, c[s ? 2 : 0] + 12, .6, 2.2); return; }
+      if (s % 2 === 0) I.bass(b, t, r - 12 + (s % 8 === 6 ? 7 : 0), .7, .18, e >= 2 ? 650 : 420);
+      if (e >= 2) {
+        I.keys(b, t, c7[s % 4] + 24, .22, .4);
+        if (s === 0 || s === 8 || (e >= 3 && (s === 4 || s === 12))) I.softkick(b, t);
+        if (s === 4 || s === 12) I.snap(b, t);
+        if (s % 2 === 0) I.hat(b, t, .4, s % 4 ? .3 : -.3);
+        if (e >= 3 && s % 4 === 2) I.ohat(b, t);
+      }
+      if (e >= 3 && s === 0 && bar % 2 === 0) I.synthlead(b, t, c[2] + 24, sp * 28);
+    } },
+  score: { name: 'Cinematic', desc: 'Orchestral documentary score', bpm: 72, gain: 1.6, hit: 'timp',
+    fn(b, k, t, sp, e, p) {
+      const s = k % 16, bar = Math.floor(k / 16), [r, q] = p[bar % 4], c = chord(r, q);
+      if (s === 0) I.strings(b, t, [r - 12, r, r + 7, c[1] + 12], sp * 16, e >= 1 ? 1 : .75);
+      if (e >= 1 && s % 2 === 0) I.keys(b, t, [r, r + 7, r + 12, r + 7][(s / 2) % 4], .45, .7);
+      if (e >= 2 && s % 2 === 0) V(b, { type: 'sawtooth', f: mtof(r - 12), t, a: .005, peak: .05, dec: .1, lp: 520 });
+      if (e >= 2 && s === 0) I.timp(b, t, .45);
+      if (e >= 3) {
+        if (s === 10) I.timp(b, t, .3);
+        if (s === 0) c.forEach(m => V(b, { type: 'sawtooth', f: mtof(m + 12), t, a: .05, peak: .026, dec: .9, lp: 1400, send: .5 }));
+        if (s >= 12 && bar % 2 === 1) N(b, { t, a: .001, peak: .05 + (s - 12) * .02, dec: .08, ft: 'bandpass', ff: 900, to: 'dry', send: .5 });
+      }
+    } },
+  westcoast: { name: 'West Coast', desc: 'Laid-back 90s hip-hop', bpm: 90, hit: 'softwhoosh',
+    fn(b, k, t, sp, e, p) {
+      const s = k % 16, bar = Math.floor(k / 16), [r, q] = p[bar % 4], c7 = seventh(r, q);
+      const sw = s % 4 === 2 ? sp * .3 : 0;
+      if (s === 0) c7.forEach(m => I.rhodes(b, t, m + 12, .8, 2));
+      if (s === 7) c7.slice(1).forEach(m => I.rhodes(b, t + sw, m + 12, .5, 1));
+      if (e >= 1 && (s === 0 || s === 7 || s === 10)) { I.sub(b, t, r - 12, .8, .42); I.bass(b, t, r - 12, .3, .3, 300); }
+      if (e >= 1) {
+        if (s === 0 || s === 7 || s === 10) I.kick(b, t, .85);
+        if (s === 4 || s === 12) I.snare(b, t, .8, .2);
+        if (s % 2 === 0) I.hat(b, t + sw, .55, .3);
+      }
+      if (e >= 3 && s === 0 && bar % 2 === 0) I.whistle(b, t, c7[2] + 24);
+    } },
+  lofi: { name: 'Lo-fi', desc: 'Mellow, dusty, chilled', bpm: 76, gain: 1.6, hit: 'softwhoosh',
+    fn(b, k, t, sp, e, p) {
+      const s = k % 16, bar = Math.floor(k / 16), [r, q] = p[bar % 4], c7 = seventh(r, q);
+      const sw = s % 4 === 2 ? sp * .33 : 0;
+      I.crackle(b, t, sp);
+      if (s === 0) { I.hiss(b, t, sp * 16); c7.forEach(m => I.rhodes(b, t + hash(m) * .03, m + 12, .85, 2.6, 1100)); }
+      if (s === 8) c7.slice(2).forEach(m => I.rhodes(b, t, m + 12, .45, 1.2, 1100));
+      if (s === 0 || s === 8) I.sub(b, t, r - 12, .6, .6);
+      if (e >= 1) {
+        if (s === 0 || s === 10) I.softkick(b, t, .8);
+        if (s === 4 || s === 12) I.snap(b, t, .8, 1200);
+        if (s % 2 === 0) I.hat(b, t + sw, .3, .2);
+      }
+      if (e >= 3 && (s === 2 || s === 6 || s === 11)) I.keys(b, t, c7[Math.floor(hash(k) * 4)] + 24, .3, .9);
+    } },
+  original: { name: 'Original mix', desc: 'The first version: a new style per era' },
+  upload: { name: 'Your own track', desc: 'Play an audio file you choose' },
+  off: { name: 'No music', desc: 'Silence' },
+};
+let TRACK = 'drive';
+try { const saved = localStorage.getItem('gtaTrack'); if (saved && TRACKS[saved] && saved !== 'upload') TRACK = saved; } catch (e) { /* storage unavailable */ }
 function schedule(b, t0, t1, toAc) {
+  const tr = TRACKS[TRACK];
+  if (TRACK === 'off' || TRACK === 'upload') return;
+  if (TRACK === 'original') {
+    for (const c of CH) {
+      const a = Math.max(t0, c.t0), e = Math.min(t1, c.t1); if (a >= e) continue;
+      const sp = c.B / 16;
+      for (let k = Math.ceil((a - c.t0) / sp - 1e-9); ; k++) { const tl = c.t0 + k * sp; if (tl >= e) break; STYLES[c.music](b, k, toAc(tl), sp, tl - c.t0, c); }
+      for (const [ht, kind, v] of c.hits) { const tl = c.t0 + ht; if (tl < a || tl >= e) continue; I[kind](b, toAc(tl), v ?? 1); }
+    }
+    return;
+  }
+  const sp = 60 / tr.bpm / 4;
+  for (let k = Math.ceil(t0 / sp - 1e-9); ; k++) {
+    const tl = k * sp; if (tl >= t1) break;
+    const ch = chAt(tl), lt = tl - ch.t0;
+    tr.fn(b, k, toAc(tl), sp, energyAt(ch, lt), PROG[MOOD[ch.id][0]]);
+  }
   for (const c of CH) {
-    const a = Math.max(t0, c.t0), e = Math.min(t1, c.t1); if (a >= e) continue;
-    const sp = c.B / 16;
-    for (let k = Math.ceil((a - c.t0) / sp - 1e-9); ; k++) {
-      const tl = c.t0 + k * sp; if (tl >= e) break;
-      STYLES[c.music](b, k, toAc(tl), sp, tl - c.t0, c);
-    }
-    for (const [ht, kind, v] of c.hits) {
-      const tl = c.t0 + ht; if (tl < a || tl >= e) continue;
-      I[kind](b, toAc(tl), v ?? 1);
-    }
+    const hits = c.i > 0 ? [[0, tr.hit, .8]] : [];
+    if (c.id === 'vi') hits.push([c.d - 6.6, 'siren', 2.8], [c.d - 3.1, TRACK === 'score' ? 'timp' : 'boom', .45]);
+    for (const [ht, kind, v] of hits) { const tl = c.t0 + ht; if (tl < t0 || tl >= t1) continue; I[kind](b, toAc(tl), v); }
   }
 }
 function masterChain(A) {
@@ -1633,10 +1750,11 @@ function masterChain(A) {
 
 /* ================= EXPORT HOOKS ================= */
 window.__DUR = DUR;
+window.__setTrack = id => { TRACK = id; };
 window.__render = t => frame(t);
-window.__audioWav = async () => {
-  const sr = 44100, A = new OfflineAudioContext(2, Math.ceil(sr * DUR), sr);
-  schedule(makeBus(A, masterChain(A)), 0, DUR, t => t);
+window.__audioWav = async (from = 0, len = DUR) => {
+  const sr = 44100, A = new OfflineAudioContext(2, Math.ceil(sr * len), sr);
+  schedule(makeBus(A, masterChain(A)), from, from + len, t => t - from);
   const buf = await A.startRendering();
   const L = buf.getChannelData(0), R = buf.getChannelData(1), n = L.length;
   const ab = new ArrayBuffer(44 + n * 4), v = new DataView(ab);
@@ -1664,19 +1782,24 @@ window.__ready = document.fonts.ready.then(() => Promise.all(
 if (EXPORT) return;
 
 let tl = 0, playing = false, lastPerf = 0, muted = false;
-let A = null, master = null, sess = null, sessBus = null, acT0 = 0, tlT0 = 0, schedTo = 0;
+let A = null, master = null, sess = null, sessBus = null, acT0 = 0, tlT0 = 0, schedTo = 0, userBuf = null, upSrc = null, userName = '';
 const POSTER = VI.t0 + 14;
 const render = t => { if (ready) frame(t); else { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#07060b'; ctx.fillRect(0, 0, cv.width, cv.height); } };
 
 function audioStart() {
-  if (!A) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; A = new AC(); master = masterChain(A); }
-  if (A.state === 'suspended') A.resume();
+  ensureCtx(); if (!A) return;
   audioStop();
   sess = A.createGain(); sess.gain.value = muted ? 0 : 1; sess.connect(master);
   sessBus = makeBus(A, sess);
   acT0 = A.currentTime + .05; tlT0 = tl; schedTo = tl;
+  if (TRACK === 'upload' && userBuf) {
+    upSrc = A.createBufferSource(); upSrc.buffer = userBuf; upSrc.loop = true;
+    const g = A.createGain(); g.gain.value = .9; upSrc.connect(g); g.connect(sess);
+    upSrc.start(acT0, tl % userBuf.duration);
+  }
 }
 function audioStop() {
+  if (upSrc) { try { upSrc.stop(A.currentTime + .1); } catch (e) { /* already stopped */ } upSrc = null; }
   if (sess && A) { const s = sess; s.gain.setTargetAtTime(0, A.currentTime, .03); setTimeout(() => s.disconnect(), 400); }
   sess = null; sessBus = null;
 }
@@ -1731,6 +1854,39 @@ function sizeFill() { const w = $('track').clientWidth - 2 * (CH.length - 1); [.
 $('bigplay').addEventListener('click', () => { tl = 0; setPlaying(true); });
 $('pp').addEventListener('click', () => setPlaying(!playing));
 cv.addEventListener('click', () => setPlaying(!playing));
+
+// soundtrack picker
+function buildMusic() {
+  const box = $('music');
+  box.querySelectorAll('button,.status').forEach(n => n.remove());
+  for (const [id, tr] of Object.entries(TRACKS)) {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(id === TRACK)); b.classList.toggle('on', id === TRACK);
+    b.innerHTML = `${tr.name}<small>${id === 'upload' && userName ? userName : tr.desc}</small>`;
+    b.addEventListener('click', () => pickTrack(id));
+    box.appendChild(b);
+  }
+}
+function ensureCtx() { if (!A) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; A = new AC(); master = masterChain(A); } if (A.state === 'suspended') A.resume(); }
+function pickTrack(id) {
+  if (id === 'upload' && !userBuf) { $('upload').click(); return; }
+  TRACK = id;
+  try { if (id !== 'upload') localStorage.setItem('gtaTrack', id); } catch (e) { /* storage unavailable */ }
+  buildMusic();
+  if (playing) audioStart(); else if ($('gate').hidden) setPlaying(true);
+}
+$('upload').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  ensureCtx(); if (!A) return;
+  const st = document.createElement('span'); st.className = 'status'; st.textContent = 'Loading ' + f.name + '…'; $('music').appendChild(st);
+  try {
+    userBuf = await A.decodeAudioData(await f.arrayBuffer());
+    userName = f.name.length > 28 ? f.name.slice(0, 26) + '…' : f.name;
+    pickTrack('upload');
+  } catch (err) { st.textContent = 'That file could not be played. Try an MP3, M4A, OGG or WAV.'; }
+  e.target.value = '';
+});
+buildMusic();
 $('snd').addEventListener('click', () => {
   muted = !muted; $('snd').textContent = muted ? 'OFF' : 'SND'; $('snd').setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
   if (sess && A) sess.gain.setTargetAtTime(muted ? 0 : 1, A.currentTime, .05);
