@@ -1,0 +1,5 @@
+node_modules/
+out/.segments/
+audio/.models/
+*.pyc
+__pycache__/

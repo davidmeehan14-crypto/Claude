@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Wedding Chapter — Launch Film</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root { --bg: #0e0e12; --fg: #F6F0E6; --accent: #FFC247; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: Inter, system-ui, sans-serif; }
+  body { display: grid; place-items: center; overflow: hidden; }
+  #stage { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; }
+  canvas { width: 100%; height: 100%; display: block; background: #000; }
+  #play { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(14,14,18,.55); cursor: pointer; border: 0; color: inherit; font: inherit; }
+  #play span { font: italic 400 clamp(18px, 3vw, 40px) Fraunces, serif; letter-spacing: .02em; }
+  #play b { display: block; font: 900 clamp(28px, 6vw, 84px) Fraunces, serif; margin-top: .2em; }
+  #play i { display: inline-grid; place-items: center; width: 2.4em; height: 2.4em; border-radius: 50%; background: var(--accent); color: #16161D; font-style: normal; margin-top: .8em; font-size: clamp(16px, 2vw, 26px); }
+  #bar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,.08); cursor: pointer; opacity: 0; transition: opacity .3s; }
+  #stage:hover #bar { opacity: 1; }
+  #bar div { height: 100%; width: 0; background: var(--accent); }
+  body.render #play, body.render #bar { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="1920" height="1080"></canvas>
+  <button id="play" aria-label="Play film"><div style="text-align:center"><span>a launch film for</span><b>The Wedding Chapter</b><i>▶</i></div></button>
+  <div id="bar"><div></div></div>
+</div>
+<audio id="audio" src="soundtrack.m4a" preload="auto"></audio>
+<script src="engine.js"></script>
+<script src="data/dialogue.js" onerror="window.DIALOGUE=window.DIALOGUE||[]"></script>
+<script src="scenes/a_meet.js" onerror="console.warn('missing a')"></script>
+<script src="scenes/b_chaos.js" onerror="console.warn('missing b')"></script>
+<script src="scenes/c_order.js" onerror="console.warn('missing c')"></script>
+<script src="scenes/d_finale.js" onerror="console.warn('missing d')"></script>
+<script>
+(function () {
+  const q = new URLSearchParams(location.search);
+  const cnv = document.getElementById('c');
+  FILM.attach(cnv);
+  const fontsReady = Promise.all([
+    '900 40px Fraunces', 'italic 400 40px Fraunces', 'italic 700 40px Fraunces', '300 40px Fraunces', '600 40px Fraunces',
+    '400 40px Inter', '600 40px Inter', '800 40px Inter', '700 40px Caveat', '600 40px Caveat', '500 40px "Space Grotesk"', '700 40px "Space Grotesk"',
+  ].map(f => document.fonts.load(f))).then(() => document.fonts.ready);
+  window.FILM_READY = fontsReady.then(() => true);
+
+  if (q.has('render')) { document.body.classList.add('render'); return; }
+
+  const audio = document.getElementById('audio'), play = document.getElementById('play'), bar = document.querySelector('#bar div');
+  let startT = q.has('t') ? parseFloat(q.get('t')) : 0, playing = false, clock0 = 0;
+  fontsReady.then(() => FILM.renderFrame(startT || 0.95));
+  function now() { return audio.readyState >= 2 && !audio.error ? audio.currentTime : (performance.now() - clock0) / 1000; }
+  function loop() {
+    if (!playing) return;
+    const t = Math.min(FILM.DURATION - 1e-3, now());
+    FILM.renderFrame(t);
+    bar.style.width = (t / FILM.DURATION * 100) + '%';
+    if (t >= FILM.DURATION - 0.01 || (audio.ended)) { playing = false; play.style.display = ''; return; }
+    requestAnimationFrame(loop);
+  }
+  function start(at) {
+    playing = true; play.style.display = 'none';
+    audio.currentTime = at; clock0 = performance.now() - at * 1000;
+    audio.play().catch(() => {});
+    requestAnimationFrame(loop);
+  }
+  play.addEventListener('click', () => start(startT >= FILM.DURATION - .1 ? 0 : startT));
+  document.getElementById('bar').parentElement.querySelector('#bar').addEventListener('click', e => {
+    const r = e.currentTarget.getBoundingClientRect(); const t = (e.clientX - r.left) / r.width * FILM.DURATION;
+    startT = t; if (playing) { audio.currentTime = t; clock0 = performance.now() - t * 1000; } else { FILM.renderFrame(t); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); if (playing) { playing = false; audio.pause(); startT = now(); play.style.display = ''; } else start(startT); }
+  });
+  audio.addEventListener('ended', () => { playing = false; startT = 0; play.style.display = ''; });
+})();
+</script>
+</body>
+</html>
