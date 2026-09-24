@@ -635,45 +635,12 @@
     g.strokeStyle = paint(fy0, fy1); g.lineWidth = 4; rrect(g, fx0, fy0, fx1 - fx0, fy1 - fy0, 8); g.stroke();
     g.lineWidth = 1.6; rrect(g, fx0 + 14, fy0 + 14, fx1 - fx0 - 28, fy1 - fy0 - 28, 4); g.stroke();
     for (const [x, y] of [[fx0 + 14, fy0 + 14], [fx1 - 14, fy0 + 14], [fx0 + 14, fy1 - 14], [fx1 - 14, fy1 - 14]]) F.sparkle(g, x, y, 16, paint(y - 16, y + 16), Math.PI / 4);
-    // monogram: Dot (circle) interlocked with Dash (capsule) + a tiny heart
-    const my = 292, cA = [CCX - 38, my + 12], capX = CCX + 30, capY = my - 2, capW = 64, capH = 152;
-    const circ = () => { g.beginPath(); g.arc(cA[0], cA[1], 62, 0, TAU); };
-    const cap = () => rrect(g, capX - capW / 2, capY - capH / 2, capW, capH, capW / 2);
-    const gold = paint(my - 90, my + 90);
-    const cut = (path, clip) => { if (S) return; g.save(); if (clip) { g.beginPath(); clip(); g.clip(); } g.globalCompositeOperation = 'destination-out'; g.lineWidth = 19; path(); g.stroke(); g.restore(); };
-    const draw = (path, clip) => { g.save(); if (clip) { g.beginPath(); clip(); g.clip(); } g.lineWidth = 7; g.strokeStyle = gold; path(); g.stroke(); g.restore(); };
-    draw(circ);
-    cut(cap); draw(cap);                                   // capsule over circle (top crossing)
-    const lower = () => g.rect(0, my + 14, W, 200);
-    cut(circ, lower); draw(circ, lower);                   // circle over capsule (bottom crossing)
-    F.heartPath(g, cA[0], cA[1] + 2, 40); g.fillStyle = gold; g.fill();
-    // THE
-    F.font(g, 46, F.FONT.display, 600); g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-    g.letterSpacing = '22px';
-    const theW = g.measureText('THE').width;
-    g.fillStyle = paint(440, 480); g.fillText('THE', CCX + 11, 478);
-    g.letterSpacing = '0px';
-    g.strokeStyle = paint(455, 465); g.lineWidth = 2.5;
-    for (const s of [-1, 1]) {
-      const a = CCX + s * (theW / 2 + 22), b = CCX + s * (theW / 2 + 128);
-      g.beginPath(); g.moveTo(a, 462); g.lineTo(b, 462); g.stroke();
-      g.beginPath(); g.moveTo(b, 456); g.lineTo(b + s * 6, 462); g.lineTo(b, 468); g.lineTo(b - s * 6, 462); g.closePath(); g.fillStyle = g.strokeStyle; g.fill();
-    }
-    // Wedding (big italic)
-    F.font(g, 220, F.FONT.display, 700, 'italic');
-    let w = g.measureText('Wedding').width, sz = Math.min(220, 220 * 720 / w);
-    F.font(g, sz, F.FONT.display, 700, 'italic');
-    g.fillStyle = paint(520, 700); g.fillText('Wedding', CCX - 6, 668);
-    // Chapter (roman 900)
-    F.font(g, 170, F.FONT.display, 900); g.letterSpacing = '4px';
-    w = g.measureText('Chapter').width; sz = Math.min(170, 170 * 640 / w);
-    F.font(g, sz, F.FONT.display, 900);
-    g.fillStyle = paint(720, 840); g.fillText('Chapter', CCX + 2, 838);
-    g.letterSpacing = '0px';
-    // ornament rule
-    g.strokeStyle = paint(880, 900); g.lineWidth = 2.5;
-    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(CCX + s * 26, 892); g.lineTo(CCX + s * 170, 892); g.stroke(); }
-    F.heartPath(g, CCX, 894, 26); g.fillStyle = paint(880, 905); g.fill();
+    // the client's real logo, struck in gold foil (or its debossed shadow)
+    const L = window.LOGO, lw = 720, lh = lw * L.h / L.w, lx = CCX - lw / 2, ly = 540 - lh / 2;
+    const tmp = F.canvas(CW, CH), tg = tmp.getContext('2d');
+    tg.drawImage(L.inkImg, lx, ly, lw, lh); tg.drawImage(L.goldImg, lx, ly, lw, lh);
+    tg.globalCompositeOperation = 'source-in'; tg.fillStyle = paint(ly, ly + lh); tg.fillRect(0, 0, CW, CH);
+    g.drawImage(tmp, 0, 0);
     g.restore();
   }
   function buildCover() {
@@ -745,10 +712,11 @@
   }
   function bookCamClosed(t) {
     const p = ease.inOutCubic(invLerp(54.05, 54.9, t));
-    const z = lerp(.62, .55, p) + .014 * ease.inOutSine(invLerp(55, 59.6, t));
+    const z = (lerp(.62, .55, p) + .014 * ease.inOutSine(invLerp(55, 59.6, t))) * (1 + 2.2 * ease.inCubic(invLerp(55.15, 55.95, t)));
     const bump = 1 - .018 * jiggle(t - 54, 4.5, 7);
     const sh = F.shake(t, 11 * Math.exp(-(t - 54) * 10), 9);
-    return { z: z * bump, cx: lerp(0, CW / 2, p), cy: lerp(24, 66, p), dx: sh[0], dy: sh[1] };
+    const q = ease.inOutCubic(invLerp(55.1, 55.8, t)); // settle on the logo before the push-through
+    return { z: z * bump, cx: lerp(lerp(0, CW / 2, p), CCX, q), cy: lerp(lerp(24, 66, p), -24, q), dx: sh[0], dy: sh[1] };
   }
   function applyCam(g, c) { g.translate(W / 2 + c.dx, H / 2 + c.dy); g.scale(c.z, c.z); g.translate(-c.cx, -c.cy); }
 
@@ -851,66 +819,106 @@
     shimmer(ctx, cv.foil, ease.inOutSine(invLerp(54.3, 55.15, t)), .95);
     shimmer(ctx, cv.foil, ease.inOutSine(invLerp(57.2, 58.1, t)), .5, 120);
     // glints at the end of the sweep
-    for (const [gx, gy, t0] of [[CCX + 62, 292 - 76 - CH / 2, 54.95], [CCX + 300, 560 - CH / 2, 55.1], [CCX - 300, 780 - CH / 2, 55.25]]) {
+    const LW_ = 720, LH_ = LW_ * window.LOGO.h / window.LOGO.w, LX_ = CCX - LW_ / 2, LY_ = 540 - LH_ / 2 - CH / 2;
+    for (const [gx, gy, t0] of [[LX_ + .2 * LW_, LY_ + .03 * LH_, 54.95], [LX_ + .985 * LW_, LY_ + .6 * LH_, 55.1], [LX_ + .35 * LW_, LY_ + .96 * LH_, 55.25]]) {
       const k = F.pulse(t, t0, t0 + .45); if (k > 0) F.sparkle(ctx, gx, gy + (gy > 0 ? 0 : 0), 34 * k, '#FFF8E0', (t - t0) * 2);
     }
-    // tagline (on the cover)
-    const words = 'Plan the day. Love the story.'.split(' ');
-    F.font(ctx, 50, F.FONT.display, 400, 'italic'); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    const space = ctx.measureText(' ').width, ws = words.map(w => ctx.measureText(w).width), tot = ws.reduce((a, b) => a + b, 0) + space * (words.length - 1);
-    let x = CCX - tot / 2;
-    words.forEach((w, i) => {
-      const k = ease.outCubic(invLerp(57.3 + i * .1, 57.75 + i * .1, t));
-      if (k > 0) {
-        ctx.save(); ctx.globalAlpha = k; const y = 978 - CH / 2 + (1 - k) * 14;
-        ctx.fillStyle = 'rgba(6,10,50,.7)'; ctx.fillText(w, x + 1.5, y + 3);
-        ctx.fillStyle = foilGrad(ctx, y - 40, y + 8); ctx.fillText(w, x, y);
-        ctx.restore();
-      }
-      x += ws[i] + space;
-    });
     dustPuffs(ctx, t);
     ctx.restore();
 
-    // screen-space extras
-    const toS = (dx, dy) => [W / 2 + cam.dx + (dx - cam.cx) * z, H / 2 + cam.dy + (dy - cam.cy) * z];
-    const [, coverTop] = toS(0, -CH / 2), [, bookBottom] = toS(0, CH / 2 + 24);
-    const ty = Math.min(H - 70, bookBottom + 92);
-    const nt = narratorTimes();
-    // hand-lettered narrator line, written on
-    const hw = invLerp(nt.b, nt.b + 1.0, t), hOut = 1 - invLerp(57.25, 57.6, t);
-    if (hw > 0 && hOut > 0) {
-      ctx.save(); ctx.globalAlpha = hOut;
-      F.font(ctx, 66, F.FONT.hand, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      const str = 'Write the next one together.', tw = ctx.measureText(str).width, x0 = W / 2 - tw / 2;
-      ctx.save(); ctx.beginPath(); ctx.rect(x0 - 20, ty - 80, (tw + 40) * ease.inOutSine(hw), 140); ctx.clip();
-      ctx.fillStyle = '#F6E7C8'; ctx.fillText(str, W / 2, ty);
-      ctx.restore();
-      const up = ease.outCubic(invLerp(nt.b + .7, nt.b + 1.2, t));
-      if (up > 0) F.inkLine(ctx, F.partialPolyline([[x0 + 30, ty + 18], [W / 2, ty + 10], [x0 + tw - 10, ty + 16], [x0 + tw + 20, ty + 4]], up), { t, seed: 5, lw: 4, stroke: P.gold, amp: .6 });
-      if (hw < 1) { const px = x0 - 20 + (tw + 40) * ease.inOutSine(hw); F.sparkle(ctx, px, ty - 10, 14, P.gold, t * 6); }
-      ctx.restore();
+    // cream end card with the real logo irises open from the cover's logo
+    if (t >= END_A) endCard(ctx, t);
+  }
+
+  // ─────────────── END CARD: the client's logo on cream ───────────────
+  const END_A = 55.55, END_B = 56.05;          // circular reveal window
+  const CARD_LW = 1000, CARD_CX = 960, CARD_CY = 430;
+  function endCard(ctx, t) {
+    const L = window.LOGO, lw = CARD_LW, lh = lw * L.h / L.w, lx = CARD_CX - lw / 2, ly = CARD_CY - lh / 2;
+    const S = lw / L.w; // image px → screen px
+    const rv = ease.inOutCubic(invLerp(END_A, END_B, t)), R = lerp(0, 1250, rv);
+    ctx.save();
+    if (rv < 1) { ctx.beginPath(); ctx.arc(W / 2, H / 2, R, 0, TAU); ctx.clip(); }
+    const push = 1 + .035 * ease.outSine(invLerp(END_A, 60, t));
+    ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(push, push); ctx.translate(-W / 2, -H / 2);
+    F.paper(ctx);
+    // warm glow behind the lock-up
+    const gl = ctx.createRadialGradient(CARD_CX, CARD_CY, 40, CARD_CX, CARD_CY, 760);
+    gl.addColorStop(0, 'rgba(255,236,190,.55)'); gl.addColorStop(1, 'rgba(255,236,190,0)');
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    // regions of the lock-up (in logo-image px): "The", "CHAPTER", rest = "Wedding"
+    const THE = [370, 0, 250, 130], CHAP = [290, 480, 620, 90];
+    const rectS = r => [lx + r[0] * S, ly + r[1] * S, r[2] * S, r[3] * S];
+    const draw = () => ctx.drawImage(L.inkImg, lx, ly, lw, lh);
+    // The — rises + fades
+    const kThe = ease.outCubic(invLerp(55.75, 56.25, t));
+    if (kThe > 0) { ctx.save(); ctx.beginPath(); ctx.rect(...rectS(THE)); ctx.clip(); ctx.globalAlpha = kThe; ctx.translate(0, (1 - kThe) * 18); draw(); ctx.restore(); }
+    // Wedding — written on by a slanted pen sweep
+    const kW = ease.inOutSine(invLerp(55.9, 57.0, t));
+    if (kW > 0) {
+      const sx = lerp(lx - 120, lx + lw + 160, kW);
+      ctx.save(); ctx.beginPath(); ctx.rect(lx - 10, ly - 10, lw + 20, lh + 20); ctx.rect(...rectS(THE)); ctx.rect(...rectS(CHAP)); ctx.clip('evenodd');
+      ctx.beginPath(); ctx.moveTo(lx - 200, ly - 10); ctx.lineTo(sx + 90, ly - 10); ctx.lineTo(sx - 90, ly + lh + 10); ctx.lineTo(lx - 200, ly + lh + 10); ctx.closePath(); ctx.clip();
+      draw(); ctx.restore();
+      if (kW < 1) { const py = lerp(ly + lh * .25, ly + lh * .75, .5 + .5 * Math.sin(kW * 18)); F.sparkle(ctx, sx - lerp(-60, 60, (py - ly) / lh), py, 22, P.gold, t * 8); }
     }
-    // OUT NOW
-    const on = ease.outCubic(invLerp(57.85, 58.35, t));
+    // CHAPTER — tracks in
+    const kC = ease.outCubic(invLerp(56.7, 57.3, t));
+    if (kC > 0) {
+      const r = rectS(CHAP), cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2, sc = lerp(1.12, 1, kC);
+      ctx.save(); ctx.beginPath(); ctx.rect(...r); ctx.clip(); ctx.globalAlpha = kC;
+      ctx.translate(cx, cy); ctx.scale(sc, 1); ctx.translate(-cx, -cy); draw(); ctx.restore();
+    }
+    // gold underline — drawn left → right
+    const kU = ease.inOutCubic(invLerp(57.05, 57.5, t));
+    if (kU > 0) {
+      ctx.save(); ctx.beginPath(); ctx.rect(lx, ly, lw * (.28 + .5 * kU), lh); ctx.clip();
+      ctx.drawImage(L.goldImg, lx, ly, lw, lh); ctx.restore();
+      if (kU < 1) F.sparkle(ctx, lx + lw * (.28 + .5 * kU), ly + lh * .965, 16, P.gold, t * 6);
+    }
+    // tagline + availability
+    F.font(ctx, 46, F.FONT.display, 400, 'italic'); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    const words = 'Plan the day. Love the story.'.split(' ');
+    const sp = ctx.measureText(' ').width, ws = words.map(w => ctx.measureText(w).width), tot = ws.reduce((a, b) => a + b, 0) + sp * (words.length - 1);
+    let x = W / 2 - tot / 2;
+    words.forEach((w, i) => {
+      const k = ease.outCubic(invLerp(57.45 + i * .08, 57.85 + i * .08, t));
+      if (k > 0) { ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = '#3A3530'; ctx.textAlign = 'left'; ctx.fillText(w, x, 812 + (1 - k) * 12); ctx.restore(); }
+      x += ws[i] + sp;
+    });
+    const on = ease.outCubic(invLerp(58.0, 58.45, t));
     if (on > 0) {
       ctx.save(); ctx.globalAlpha = on;
-      F.font(ctx, 30, F.FONT.label, 700); ctx.letterSpacing = `${lerp(24, 12, on)}px`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      F.font(ctx, 24, F.FONT.label, 700); ctx.letterSpacing = `${lerp(16, 9, on)}px`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const w = ctx.measureText('OUT NOW').width;
-      ctx.fillStyle = P.gold; ctx.fillText('OUT NOW', W / 2 + 6, ty - 12);
-      ctx.letterSpacing = '0px';
-      ctx.strokeStyle = 'rgba(255,194,71,.8)'; ctx.lineWidth = 2;
-      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(W / 2 + s * (w / 2 + 22), ty - 12); ctx.lineTo(W / 2 + s * (w / 2 + 22 + 90 * on), ty - 12); ctx.stroke(); }
+      ctx.fillStyle = '#B88A3E'; ctx.fillText('OUT NOW', W / 2 + 5, 880);
+      ctx.letterSpacing = '0px'; ctx.strokeStyle = 'rgba(184,138,62,.7)'; ctx.lineWidth = 2;
+      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(W / 2 + s * (w / 2 + 20), 880); ctx.lineTo(W / 2 + s * (w / 2 + 20 + 70 * on), 880); ctx.stroke(); }
       ctx.restore();
     }
-    // button: Biscuit (and friends) pop up from behind the book
-    drawPeekers(ctx, t, coverTop, toS);
-    // iris out on Biscuit, then black
+    // drifting gold motes
+    for (let i = 0; i < 26; i++) {
+      const u = hash(i * 3.1), v = hash(i * 7.7), ph = (t * (.05 + .05 * hash(i)) + v) % 1;
+      const a = Math.sin(ph * Math.PI) * .7 * ease.outCubic(invLerp(END_A, END_B + .4, t));
+      if (a > .02) F.sparkle(ctx, 120 + u * 1680, lerp(1000, 80, ph), 4 + 6 * hash(i + .3), `rgba(212,164,70,${a.toFixed(3)})`, t + i);
+    }
+    ctx.restore();
+    // gold ring on the reveal edge
+    if (rv > 0 && rv < 1) {
+      ctx.beginPath(); ctx.arc(W / 2, H / 2, R, 0, TAU); ctx.lineWidth = 10 * (1 - rv) + 3; ctx.strokeStyle = P.gold; ctx.stroke();
+      for (let i = 0; i < 10; i++) { const a = i / 10 * TAU + t * 2; F.sparkle(ctx, W / 2 + Math.cos(a) * R, H / 2 + Math.sin(a) * R, 18 * (1 - rv) + 6, '#FFF3C4', a); }
+    }
+    ctx.restore();
+    // button: Biscuit (with Dot & Dash) pops up from the bottom-right corner
+    const OX = 480, bottom = H - 6, PS = 1.45; // peekers scaled up about Biscuit's base
+    ctx.save(); ctx.translate(OX + 850, bottom); ctx.scale(PS, PS); ctx.translate(-850, -bottom);
+    ctx.beginPath(); ctx.rect(0, 0, W, bottom + 6); ctx.clip();
+    drawPeekers(ctx, t, bottom, null, bottom - 250, 690, 1130); ctx.restore();
     const ir = invLerp(59.5, 59.92, t);
     if (ir > 0) {
-      const b = biscuitPop(t, coverTop), cx = b.x + 40, cy = b.headY;
-      const R = lerp(1500, 70, ease.inOutCubic(ir));
-      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(cx, cy, Math.max(0, R), 0, TAU, true); ctx.fillStyle = '#000'; ctx.fill('evenodd'); ctx.restore();
+      const b = biscuitPop(t, bottom), cx = OX + 850 + (b.x + 40 - 850) * PS, cy = bottom + (b.headY - bottom) * PS;
+      const Rr = lerp(2000, 70, ease.inOutCubic(ir));
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(cx, cy, Math.max(0, Rr), 0, TAU, true); ctx.fillStyle = '#000'; ctx.fill('evenodd'); ctx.restore();
     }
     const fb = invLerp(59.86, 59.99, t);
     if (fb > 0) { ctx.save(); ctx.globalAlpha = fb; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
@@ -924,14 +932,14 @@
     const sy = 1 + .28 * Math.max(0, vel) - .12 * Math.max(0, -vel), sx = 1 / Math.sqrt(sy);
     return { x: 850, y: base, sy, sx, headY: base - 1.2 * (20 + 62 * sy + 30), k };
   }
-  function drawPeekers(ctx, t, coverTop, toS) {
+  function drawPeekers(ctx, t, coverTop, toS, woofY = 100, dotX = 770, dashX = 1180) {
     if (t < 58.45) return;
     const b = biscuitPop(t, coverTop);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, coverTop + 3); ctx.clip();
     // Dot & Dash peek from the corners a beat later
     const dk = spring(t - 58.98, 2.8, .4), hk = spring(t - 59.08, 2.8, .4);
-    if (dk > 0) F.drawDot(ctx, { x: 770, y: coverTop + lerp(170, 30, dk), scale: .72, t, rot: .12, look: [1, -.3], mood: t > 59.2 ? 'joy' : 'happy', blush: .7, mouth: t > 59.2 ? .5 : undefined, legs: false, armL: [-10, 20], armR: [10, 20] });
-    if (hk > 0) F.drawDash(ctx, { x: 1180, y: coverTop + lerp(210, 88, hk), scale: .72, t, rot: -.12, look: [-1, -.2], mood: t > 59.2 ? 'joy' : 'happy', blush: .5, mouth: t > 59.25 ? .5 : undefined, legs: false });
+    if (dk > 0) F.drawDot(ctx, { x: dotX, y: coverTop + lerp(170, 30, dk), scale: .72, t, rot: .12, look: [1, -.3], mood: t > 59.2 ? 'joy' : 'happy', blush: .7, mouth: t > 59.2 ? .5 : undefined, legs: false, armL: [-10, 20], armR: [10, 20] });
+    if (hk > 0) F.drawDash(ctx, { x: dashX, y: coverTop + lerp(210, 88, hk), scale: .72, t, rot: -.12, look: [-1, -.2], mood: t > 59.2 ? 'joy' : 'happy', blush: .5, mouth: t > 59.25 ? .5 : undefined, legs: false });
     // Biscuit
     const bark = F.pulse(t, 58.82, 59.2) + .6 * F.pulse(t, 59.22, 59.42);
     F.drawBiscuit(ctx, { x: b.x, y: b.y, scale: 1.2, sx: b.sx, sy: b.sy, t, dir: 1, bark, tongue: t > 59.45, mood: t > 59.45 ? 'joy' : undefined, earFlop: t > 58.8 ? jiggle(t - 58.84, 3.2, 3) * 1.1 : 0, wag: t * 7, rot: t > 58.8 ? -.08 * jiggle(t - 58.8, 2, 3) : 0 });
@@ -943,14 +951,14 @@
     // WOOF!
     const wk = spring(t - 58.84, 3, .35);
     if (wk > 0) {
-      ctx.save(); ctx.translate(1060, 100); ctx.rotate(-.12 + jiggle(t - 58.84, 4, 5) * .08); ctx.scale(wk, wk);
+      ctx.save(); ctx.translate(1060, woofY); ctx.rotate(-.12 + jiggle(t - 58.84, 4, 5) * .08); ctx.scale(wk, wk);
       F.font(ctx, 104, F.FONT.hand, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.lineJoin = 'round'; ctx.lineWidth = 12; ctx.strokeStyle = P.ink; ctx.strokeText('WOOF!', 0, 0);
       ctx.fillStyle = P.gold; ctx.fillText('WOOF!', 0, 0);
       ctx.restore();
       // action lines
       ctx.save(); ctx.globalAlpha = 1 - invLerp(59.1, 59.4, t);
-      for (let i = 0; i < 3; i++) { const a = -.9 + i * .35, r0 = 70 + wk * 10, r1 = r0 + 34 * wk; F.inkLine(ctx, [[970 + Math.cos(a) * r0, 150 + Math.sin(a) * r0], [970 + Math.cos(a) * r1, 150 + Math.sin(a) * r1]], { t, seed: 700 + i, lw: 5 }); }
+      for (let i = 0; i < 3; i++) { const a = -.9 + i * .35, r0 = 70 + wk * 10, r1 = r0 + 34 * wk; F.inkLine(ctx, [[970 + Math.cos(a) * r0, woofY + 50 + Math.sin(a) * r0], [970 + Math.cos(a) * r1, woofY + 50 + Math.sin(a) * r1]], { t, seed: 700 + i, lw: 5 }); }
       ctx.restore();
     }
   }

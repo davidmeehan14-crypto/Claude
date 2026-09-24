@@ -29,6 +29,7 @@
 </div>
 <audio id="audio" src="soundtrack.m4a" preload="auto"></audio>
 <script src="engine.js"></script>
+<script src="assets/logo.js"></script>
 <script src="data/dialogue.js" onerror="window.DIALOGUE=window.DIALOGUE||[]"></script>
 <script src="scenes/a_meet.js" onerror="console.warn('missing a')"></script>
 <script src="scenes/b_chaos.js" onerror="console.warn('missing b')"></script>
@@ -43,13 +44,13 @@
     '900 40px Fraunces', 'italic 400 40px Fraunces', 'italic 700 40px Fraunces', '300 40px Fraunces', '600 40px Fraunces',
     '400 40px Inter', '600 40px Inter', '800 40px Inter', '700 40px Caveat', '600 40px Caveat', '500 40px "Space Grotesk"', '700 40px "Space Grotesk"',
   ].map(f => document.fonts.load(f))).then(() => document.fonts.ready);
-  window.FILM_READY = fontsReady.then(() => true);
+  window.FILM_READY = Promise.all([fontsReady, window.ASSETS_READY]).then(() => true);
 
   if (q.has('render')) { document.body.classList.add('render'); return; }
 
   const audio = document.getElementById('audio'), play = document.getElementById('play'), bar = document.querySelector('#bar div');
   let startT = q.has('t') ? parseFloat(q.get('t')) : 0, playing = false, clock0 = 0;
-  fontsReady.then(() => FILM.renderFrame(startT || 0.95));
+  window.FILM_READY.then(() => FILM.renderFrame(startT || 0.95));
   function now() { return audio.readyState >= 2 && !audio.error ? audio.currentTime : (performance.now() - clock0) / 1000; }
   function loop() {
     if (!playing) return;

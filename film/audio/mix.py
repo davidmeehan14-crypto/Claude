@@ -10,6 +10,13 @@ def load(name):
     out = np.zeros((N, 2)); out[:min(N, len(x))] = x[:N]; return out
 music, sfx, dia = load('music.wav'), load('sfx.wav'), load('dialogue.wav')
 import json
+# extra cues added after the SFX pass (finale timing + logo end card)
+EXTRA = [(51.47, 'firework', .45), (51.95, 'firework', .4), (53.62, 'whoosh', .35),
+         (55.3, 'whoosh_zoom', .55), (55.55, 'shimmer_foil', .7), (57.05, 'ting', .35), (59.22, 'woof_small', .7)]
+for at, name, g in EXTRA:
+    x, sr = sf.read(os.path.join(HERE, 'sfx', name + '.wav'), always_2d=True)
+    if x.shape[1] == 1: x = np.repeat(x, 2, 1)
+    a = int(at * SR); n = min(len(x), N - a); sfx[a:a + n] += x[:n] * g
 # per-line dialogue lifts (quiet/shy lines need help over the bed)
 LIFT = {'dot_hi': 4, 'dot_cant': 6, 'dot_ido': 3, 'dash_ido': 2, 'dot_oneplace': 3, 'dot_plan': 2, 'dash_peonies': 2}
 for l in json.load(open(os.path.join(HERE, '..', 'data', 'dialogue.json'))):
