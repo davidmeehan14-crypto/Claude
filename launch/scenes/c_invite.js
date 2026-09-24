@@ -380,10 +380,10 @@
   // ───── phone world (30.5–38) ─────
   const MESH = () => [[C.lavender, 0.1, 0.22, 900], [C.lilac, 0.86, 0.12, 760], [C.peach, 0.9, 0.82, 840], [C.blush, 0.16, 0.92, 780], [C.champagne, 0.55, 0.5, 560], [C.lavender, 0.62, 1.08, 720], [C.sky, 0.45, -0.08, 620]];
   function phoneLayout(t) {
-    if (t < SC.pullEnd) { const p = ease.inOutCubic(clamp((t - SC.pull) / (SC.pullEnd - SC.pull))); return { x: 960, y: lerp(540, 548, p), h: Math.exp(lerp(Math.log(4480), Math.log(900), p)), p }; }
-    if (t < 33.0) return { x: 960, y: 548 + Math.sin((t - SC.pullEnd) * 1.6) * 6, h: 900, p: 1 };
+    if (t < SC.pullEnd) { const p = ease.inOutCubic(clamp((t - SC.pull) / (SC.pullEnd - SC.pull))); return { x: 960, y: lerp(540, 548, p), h: Math.exp(lerp(Math.log(4480), Math.log(960), p)), p }; }
+    if (t < 33.0) return { x: 960, y: 548 + Math.sin((t - SC.pullEnd) * 1.6) * 6, h: 960, p: 1 };
     const y33 = 548 + Math.sin((33 - SC.pullEnd) * 1.6) * 6, p = ease.inOutCubic(clamp((t - 33.0) / 0.6));
-    return { x: 960, y: lerp(y33, 612, p) - (t - 33) * 3, h: lerp(900, 1040, p) + (t - 33) * 5, yaw: Math.sin((t - 33) * 0.6) * 0.05 * p, p: 1 };
+    return { x: 960, y: lerp(y33, 612, p) - (t - 33) * 3, h: lerp(960, 1040, p) + (t - 33) * 5, yaw: Math.sin((t - 33) * 0.6) * 0.05 * p, p: 1 };
   }
 
   function drawRSVP(g, t) {
@@ -506,7 +506,7 @@
     if (p > 0) { ctx.save(); ctx.globalAlpha *= p; if (p < 1) ctx.filter = `blur(${((1 - p) * 8).toFixed(1)}px)`; K.UI.text(ctx, '8', x + 32 + d8, y + 180 + (1 - p) * 110, 112, 800, C.ink); ctx.restore(); }
     ctx.restore();
     const pa = t - (SC.tick + 0.05);
-    if (pa > 0) { ctx.save(); const ps = sp(pa, 2.8, 0.4); ctx.translate(x + 60 + d8 * 2 + 36, y + 142); ctx.scale(ps, ps); K.UI.pill(ctx, '+1', 0, 0, { align: 'center', bg: '#DDF3E6', fg: '#2F7A55', size: 20, padX: 14 }); ctx.restore(); }
+    if (pa > 0) { ctx.save(); const ps = sp(pa, 2.8, 0.4); ctx.translate(x + 32 + d8 * 2 + 44, y + 142); ctx.scale(ps, ps); K.UI.pill(ctx, '+1', 0, 0, { align: 'center', bg: '#DDF3E6', fg: '#2F7A55', size: 20, padX: 14 }); ctx.restore(); }
     K.UI.text(ctx, 'attending · 12 to go', x + 34, y + 222, 18, 600, C.ink2);
     const av = [['AC', C.lilac], ['TM', C.peach], ['RL', C.sage], ['JB', C.sky]];
     av.forEach(([s0, col], i) => { const ax = x + w - 44 - i * 26, ay = y + 50; ctx.beginPath(); ctx.arc(ax, ay, 18, 0, TAU); ctx.fillStyle = '#fff'; ctx.fill(); K.UI.avatar(ctx, ax, ay, 16, s0, col); });
