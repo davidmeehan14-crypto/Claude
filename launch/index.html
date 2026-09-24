@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Wedding Chapter — Launch</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #0e0d12; }
+  body { display: grid; place-items: center; overflow: hidden; font-family: "Plus Jakarta Sans", sans-serif; }
+  #stage { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; }
+  canvas { width: 100%; height: 100%; display: block; background: #fff; }
+  #play { position: absolute; inset: 0; border: 0; background: rgba(255,255,255,.35); cursor: pointer; display: grid; place-items: center; }
+  #play i { width: 88px; height: 88px; border-radius: 50%; background: #2A1B3D; color: #fff; display: grid; place-items: center; font-style: normal; font-size: 30px; }
+  body.render #play { display: none; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" width="1920" height="1080"></canvas><button id="play" aria-label="Play"><i>▶</i></button></div>
+<audio id="audio" src="soundtrack.m4a" preload="auto"></audio>
+<script src="kit.js"></script>
+<script src="assets/logo.js"></script>
+<script src="scenes/a_open.js" onerror="0"></script>
+<script src="scenes/b_demo.js" onerror="0"></script>
+<script src="scenes/c_invite.js" onerror="0"></script>
+<script src="scenes/d_end.js" onerror="0"></script>
+<script>
+(function () {
+  const q = new URLSearchParams(location.search), cnv = document.getElementById('c'); KIT.attach(cnv);
+  const fonts = ['400 40px "Plus Jakarta Sans"', '500 40px "Plus Jakarta Sans"', '600 40px "Plus Jakarta Sans"', '700 40px "Plus Jakarta Sans"', '800 40px "Plus Jakarta Sans"', '500 40px Montserrat', '600 40px Montserrat', 'italic 400 40px Fraunces', 'italic 600 40px Fraunces'].map(f => document.fonts.load(f));
+  window.FILM_READY = Promise.all([...fonts, window.ASSETS_READY]).then(() => document.fonts.ready).then(() => true);
+  if (q.has('render')) { document.body.classList.add('render'); return; }
+  const audio = document.getElementById('audio'), play = document.getElementById('play'); let playing = false, t0 = 0;
+  window.FILM_READY.then(() => KIT.renderFrame(1.5));
+  const now = () => (audio.readyState >= 2 && !audio.error ? audio.currentTime : (performance.now() - t0) / 1000);
+  function loop() { if (!playing) return; const t = now(); if (t >= KIT.DURATION) { playing = false; play.style.display = ''; return; } KIT.renderFrame(t); requestAnimationFrame(loop); }
+  play.onclick = () => { playing = true; play.style.display = 'none'; audio.currentTime = 0; t0 = performance.now(); audio.play().catch(() => {}); requestAnimationFrame(loop); };
+})();
+</script>
+</body>
+</html>
