@@ -553,27 +553,27 @@
   function drawWorld(g, t, cam) {
     g.save();
     F.camera(g, cam);
-    let _b = performance.now(); background(g, t); const T2 = window.D_T || (window.D_T = {}); T2.bg = (T2.bg||0) + performance.now() - _b; _b = performance.now();
-    aisle(g, t); T2.aisle = (T2.aisle||0) + performance.now() - _b;
+    if (!(window.DX||{}).bg) background(g, t);
+    aisle(g, t);
     // depth-sorted items (far → near)
     const items = [];
-    for (const b of BUSHES) items.push([b.z, () => drawBush(g, b, xAt(b.off, b.z), yAt(b.z) + 4, 1.2 / b.z, t)]);
-    for (const f of FLOWERS) items.push([f.z, () => drawFlower(g, f, xAt(f.off, f.z), yAt(f.z), f.size * 1.2 / f.z, t)]);
-    items.push([ZA + .01, () => drawArch(g, t)]);
-    items.push([ZA - .005, () => drawCouple(g, t)]);
+    for (const b of BUSHES) if (!(window.DX||{}).bush) items.push([b.z, () => drawBush(g, b, xAt(b.off, b.z), yAt(b.z) + 4, 1.2 / b.z, t)]);
+    for (const f of FLOWERS) if (!(window.DX||{}).fl) items.push([f.z, () => drawFlower(g, f, xAt(f.off, f.z), yAt(f.z), f.size * 1.2 / f.z, t)]);
+    if (!(window.DX||{}).arch) items.push([ZA + .01, () => drawArch(g, t)]);
+    if (!(window.DX||{}).couple) items.push([ZA - .005, () => drawCouple(g, t)]);
     const bs = biscuitState(t);
     if (t > 46.85) items.push([bs.z, () => F.drawBiscuit(g, bs.s)]);
     items.sort((a, b) => b[0] - a[0]);
-    const TT = window.D_T || (window.D_T = {}); let _a = performance.now();
-    for (const it of items) { g.save(); it[1](); g.restore(); const n = performance.now(); const k = it[0] === ZA + .01 ? 'arch' : it[0] === ZA - .005 ? 'couple' : 'fl'; TT[k] = (TT[k] || 0) + n - _a; _a = n; }
+    const X = window.DX || {};
+    for (const it of items) { if (X.items) continue; g.save(); it[1](); g.restore(); }
     // climax FX
     heartWave(g, t, 962, 612);
     petalBurst(g, t, 51.2, 962, 620, 70, 511);
     for (const fw of FW) firework(g, t, fw);
     if (t > 51.2) { F.confetti(g, t, 51.2, { x: 120, y: 1100, angle: -1.05, spread: .7, speed: 1900, n: 90, seed: 21 }); F.confetti(g, t, 51.2, { x: 1800, y: 1100, angle: -2.09, spread: .7, speed: 1900, n: 90, seed: 22 }); }
-    let _m = performance.now(); motes(g, t); window.D_T.motes = (window.D_T.motes||0) + performance.now() - _m;
+    if (!X.motes) motes(g, t);
     g.restore();
-    F.vignette(g, .22, '120,70,30');
+    if (!X.vig) F.vignette(g, .22, '120,70,30');
     // kiss flash
     const kf = 1 - invLerp(51.2, 51.42, t);
     if (t >= 51.2 && kf > 0) { g.save(); g.globalAlpha = kf * .55; g.fillStyle = '#FFF6DE'; g.fillRect(0, 0, W, H); g.restore(); }

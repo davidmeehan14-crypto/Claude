@@ -9,6 +9,19 @@ def load(name):
     if x.shape[1] == 1: x = np.repeat(x, 2, 1)
     out = np.zeros((N, 2)); out[:min(N, len(x))] = x[:N]; return out
 music, sfx, dia = load('music.wav'), load('sfx.wav'), load('dialogue.wav')
+import json
+# per-line dialogue lifts (quiet/shy lines need help over the bed)
+LIFT = {'dot_hi': 4, 'dot_cant': 6, 'dot_ido': 3, 'dash_ido': 2, 'dot_oneplace': 3, 'dot_plan': 2, 'dash_peonies': 2}
+for l in json.load(open(os.path.join(HERE, '..', 'data', 'dialogue.json'))):
+    if l['id'] in LIFT:
+        a, b = int(l['start'] * SR), min(N, int((l['end'] + .6) * SR))
+        dia[a:b] *= 10 ** (LIFT[l['id']] / 20)
+# 'I can't... do this': the world muffles around Dot (26.5-28.7) - lowpass music+sfx
+def muffle(x, a, b, fc=700):
+    a, b = int(a * SR), int(b * SR); lp = sosfilt(butter(2, fc, 'low', fs=SR, output='sos'), x, axis=0)
+    w = np.zeros(N); r = int(.25 * SR); w[a:b] = 1; w[a:a + r] = np.linspace(0, 1, r); w[b - r:b] = np.linspace(1, 0, r)
+    return x * (1 - w[:, None]) + lp * w[:, None] * 0.8
+music = muffle(music, 26.3, 27.65); sfx = muffle(sfx, 26.3, 27.6)
 # sidechain: envelope of dialogue (smoothed), duck music up to -7 dB, and mids more than lows
 env = np.abs(dia).max(1)
 win = int(SR * .02); env = np.convolve(env, np.ones(win) / win, 'same')
@@ -17,11 +30,12 @@ dec = 48; e = env[::dec]; g = np.zeros_like(e); a_att = np.exp(-1 / (SR / dec * 
 for i, v in enumerate(e):
     s = a_att * s + (1 - a_att) * v if v > s else a_rel * s + (1 - a_rel) * v; g[i] = s
 g = np.interp(np.arange(N), np.arange(len(g)) * dec, g)
-duck_db = -7 * np.clip(g / 0.05, 0, 1)
+duck_db = -10 * np.clip(g / 0.04, 0, 1)
 gain = 10 ** (duck_db / 20)[:, None]
 lows = sosfilt(butter(2, 250, 'low', fs=SR, output='sos'), music, axis=0)
 music_d = lows * (0.5 + 0.5 * gain) + (music - lows) * gain
-mix = music_d * 0.9 + sfx * 0.85 + dia * 1.0
+sfx_d = sfx * (0.55 + 0.45 * gain)
+mix = music_d * 0.85 + sfx_d * 0.85 + dia * 1.35
 # gentle bus glue + soft clip
 peak = np.abs(mix).max(); print('pre peak', peak)
 mix = np.tanh(mix * 1.1) / np.tanh(1.1) if peak > 0.9 else mix
