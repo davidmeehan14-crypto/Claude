@@ -9,3 +9,4 @@ audio/stems/
 audio/lines/
 audio/*.wav
 audio/**/*.mp3
+out/
