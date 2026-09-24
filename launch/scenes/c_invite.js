@@ -480,7 +480,7 @@
     if (t < SC.sheet + 0.32) {
       const L = phoneLayout(t), k = L.h / 880, m = lerp(1, 0.8, L.p);
       g.fillStyle = '#000'; g.fillRect(0, 0, 390, 844);
-      g.save(); g.translate(195 + (960 - L.x) / k, 422 + (540 - L.y) / k); g.scale(m / k, m / k); g.drawImage(scanBuffer(t), -960, -540); g.restore();
+      g.save(); g.translate(195 + (960 - L.x) / k, 422 + (540 - L.y) / k); g.scale(m / k, m / k); g.drawImage(t < SC.sheet ? K.offscreen('c:scanbuf') : scanBuffer(t), -960, -540); g.restore();
       K.UI.statusBar(g, true);
       const dim = clamp((t - SC.sheet) / 0.3); if (dim > 0) { g.fillStyle = `rgba(20,10,30,${0.45 * dim})`; g.fillRect(0, 0, 390, 844); }
     }
@@ -544,6 +544,13 @@
       K.bgMesh(g, t, { blobs: MESH() });
       drawObjs(g, t);
       K.phone(g, { x: L.x, y: L.y, h: L.h }, sg => drawScreen2(sg, t), 'c');
+      if (t < SC.sheet) { // full-res camera feed over the (low-res) phone buffer while the phone is huge
+        const k = L.h / 880, sW = 390 * k, sH = 840 * k, m = lerp(1, 0.8, L.p);
+        g.save(); K.rr(g, L.x - sW / 2, L.y - sH / 2, sW, sH, 46 * k); g.clip();
+        g.save(); g.translate(960, 540); g.scale(m, m); g.drawImage(scanBuffer(t), -960, -540); g.restore();
+        g.translate(L.x - sW / 2, L.y - sH / 2); g.scale(k, k); K.UI.statusBar(g, true); g.restore();
+        K.rr(g, L.x - 62 * k, L.y - sH / 2 + 12 * k, 124 * k, 36 * k, 18 * k); g.fillStyle = '#000'; g.fill();
+      }
       drawCounter(g, t, ex);
       const ts = touchState(t, L);
       if (ts) K.touch(g, ts.x, ts.y, ts.press, { alpha: ts.a, ripple: ts.ripple });
@@ -572,7 +579,7 @@
     ctx.save(); ctx.globalAlpha *= al; if (bl > 0.3) ctx.filter = `blur(${bl.toFixed(1)}px)`;
     ctx.translate(ax, ay); ctx.scale(s, s); ctx.translate(-ax, -ay);
     // tail dots toward the phone
-    for (const [dx, dy, r] of [[b.side < 0 ? 14 : -14, 16, 9], [b.side < 0 ? 30 : -30, 32, 5]]) { ctx.beginPath(); ctx.arc(ax + dx, ay + dy, r, 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fill(); }
+    for (const [dx, dy, r] of [[14, 12, 9], [32, 24, 5]]) { ctx.beginPath(); ctx.arc(x - b.side * (w / 2 + dx - 6), y + dy, r, 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fill(); }
     K.glass(ctx, x - w / 2, y - h / 2, w, h, h / 2, { fill: 'rgba(255,255,255,.8)' });
     ctx.beginPath(); ctx.arc(x - w / 2 + 16 + 26, y, 26, 0, TAU); ctx.fillStyle = b.col; ctx.fill();
     K.icon(ctx, b.icon, x - w / 2 + 42, y, 28, C.ink, 1.9);
@@ -608,6 +615,7 @@
   }
   function bubblesFrame(g, t) {
     K.bgMesh(g, t, { blobs: MESH() });
+    const cz = 1 + Math.max(0, t - 33.4) * 0.009; g.translate(960, 560); g.scale(cz, cz); g.translate(-960, -560);
     // far objects (blurred) first, then phone, then near things
     drawObjs(g, t);
     const L = phoneLayout(t);

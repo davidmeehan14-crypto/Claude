@@ -79,7 +79,7 @@
   function splitAmt(t) {
     if (t < 13.5) return E.outExpo(cl((t - 13.0) / .5));
     if (t < 14.0) return 1 + .07 * E.inOutSine((t - 13.5) / .5);
-    return 1.07 * (1 - E.outBack(cl((t - 14.0) / .32), 2.6));
+    return 1.07 * (1 - E.outBack(cl((t - 14.0) / .32), 1.7));
   }
   function wordGeom(ctx, t) {
     font(ctx, WSIZE, 700);
@@ -110,7 +110,7 @@
   function drawSplit(ctx, t) {
     splitBg(ctx, t);
     const G = wordGeom(ctx, t), gs = G.gs;
-    const inA = R(t, 13.0, 13.22, E.outCubic);
+    const inA = R(t, 12.96, 13.2, E.outCubic);
     const gA = inA * (1 - R(t, 14.06, 14.34, E.outQuad)); // guides alpha
     // ── guides ──
     if (gA > 0.01) {
@@ -168,10 +168,10 @@
   function goldenBase() {
     return K.cache('b:golden', W, H, (g) => {
       const gr = g.createLinearGradient(0, 0, 0, H);
-      gr.addColorStop(0, '#F7D6AC'); gr.addColorStop(.42, '#F4BE9C'); gr.addColorStop(.72, '#ECA6A6'); gr.addColorStop(1, '#D996AE');
+      gr.addColorStop(0, '#F4CB98'); gr.addColorStop(.42, '#EFAE8E'); gr.addColorStop(.72, '#E3939C'); gr.addColorStop(1, '#C982A6');
       g.fillStyle = gr; g.fillRect(0, 0, W, H);
-      const sun = g.createRadialGradient(W * .5, H * .44, 0, W * .5, H * .44, 760);
-      sun.addColorStop(0, 'rgba(255,248,228,.95)'); sun.addColorStop(.35, 'rgba(255,230,190,.55)'); sun.addColorStop(1, 'rgba(255,220,180,0)');
+      const sun = g.createRadialGradient(W * .5, H * .2, 0, W * .5, H * .2, 720);
+      sun.addColorStop(0, 'rgba(255,248,228,.9)'); sun.addColorStop(.35, 'rgba(255,230,190,.4)'); sun.addColorStop(1, 'rgba(255,220,180,0)');
       g.fillStyle = sun; g.fillRect(0, 0, W, H);
       g.filter = 'blur(10px)';
       const hills = [[.70, 'rgba(236,168,150,.55)', 60, 1.3], [.79, 'rgba(214,142,152,.55)', 48, 2.1], [.9, 'rgba(186,128,160,.5)', 36, 2.9]];
@@ -188,7 +188,7 @@
     ctx.drawImage(goldenBase(), 0, 0);
     ctx.globalCompositeOperation = 'screen';
     // soft light rays
-    ctx.save(); ctx.translate(W * .5, H * .44); ctx.rotate(t * .05);
+    ctx.save(); ctx.translate(W * .5, H * .2); ctx.rotate(t * .05);
     for (let i = 0; i < 9; i++) {
       ctx.rotate(TAU / 9); const a = .05 + .04 * Math.sin(t * 1.3 + i * 2);
       const gr = ctx.createLinearGradient(0, 0, 1100, 0); gr.addColorStop(0, `rgba(255,240,210,${a})`); gr.addColorStop(1, 'rgba(255,240,210,0)');
@@ -228,7 +228,7 @@
       }
       const s = (1.1 - .1 * la) * (1 + 1.3 * push), blur = (1 - la) * 14 + push * 6;
       ctx.save(); ctx.globalAlpha = la * (1 - R(t, 15.78, 16.0, E.inQuad));
-      ctx.shadowColor = 'rgba(140,70,50,.35)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 10;
+      ctx.shadowColor = 'rgba(120,50,50,.42)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 10;
       if (blur > .3) ctx.filter = `blur(${blur.toFixed(1)}px)`;
       ctx.translate(W / 2, 520); ctx.scale(s, s); ctx.drawImage(buf, -buf.width / 2, -buf.height / 2); ctx.restore();
     }
@@ -303,7 +303,7 @@
     g.fillStyle = '#FBF7F2'; g.fillRect(0, 0, 390, 844);
     K.blob(g, C.blush, 340, 40, 260, 190, .5); K.blob(g, C.champagne, 60, 110, 240, 170, .45);
     UI.statusBar(g);
-    const blk = (i, fn) => { const a = R(lt, .08 + i * .055, .6 + i * .055, E.outQuart); if (a <= 0) return; g.save(); g.globalAlpha *= a; g.translate(0, (1 - a) * 28); fn(); g.restore(); };
+    const blk = (i, fn) => { const a = R(lt, i * .05, .5 + i * .05, E.outQuart); if (a <= 0) return; g.save(); g.globalAlpha *= a; g.translate(0, (1 - a) * 28); fn(); g.restore(); };
     blk(0, () => {
       txt(g, 'Good morning', 24, 80, 15, 500, C.ink2); txt(g, 'Sophie & James', 24, 112, 28, 800);
       UI.avatar(g, 334, 94, 19, 'S', C.blush); g.lineWidth = 3; g.strokeStyle = '#FBF7F2'; g.beginPath(); g.arc(356, 94, 19, 0, TAU); g.stroke(); UI.avatar(g, 356, 94, 19, 'J', C.lilac);
@@ -690,11 +690,15 @@
     }
     ctx.globalAlpha = 1 - out;
     const L = K.layout(ctx, [{ text: c.ti, size: c.center ? 48 : 58, weight: 700, color: C.ink }]);
-    K.drawLine(ctx, L, x, y, K.riseAnim(lt - .04, .018, .5, 34), c.center ? 'center' : 'left');
+    const ra = K.riseAnim(lt - .04, .018, .5, 34); K.drawLine(ctx, L, x, y, (i) => { const v = ra(i); v.blur = 0; return v; }, c.center ? 'center' : 'left');
     if (c.su) { const sa = R(t, c.a + .2, c.a + .65); ctx.globalAlpha = (1 - out) * sa; txt(ctx, c.su, x, y + 52 + (1 - sa) * 14, 24, 500, C.ink2); }
     ctx.restore();
   }
 
+  // pre-blurred object sprites (live ctx.filter blur is far too slow)
+  function objSprite(o) {
+    return K.cache('b:obj' + o.n + o.blur, 480, 480, (g) => { if (o.blur) g.filter = `blur(${(o.blur * 400 / o.s).toFixed(1)}px)`; K.obj(g, o.n, 240, 240, 400, {}); });
+  }
   function drawPhoneWorld(ctx, t) {
     K.bgMesh(ctx, t);
     const ps = phoneState(t), cam = camera(t);
@@ -704,7 +708,8 @@
       const [fx, fy] = K.float(t, 20 + i * 3, 14, .45);
       let x = lerp(o.p[0], o.q[0], cl(ps.rp)) + fx, y = lerp(o.p[1], o.q[1], cl(ps.rp)) + fy;
       x += (x - cam.fx) * (cam.s - 1) * 1.4; y += (y - cam.fy) * (cam.s - 1) * 1.4;
-      K.obj(ctx, o.n, x, y, o.s * pop * (1 + (cam.s - 1) * 1.2), { rot: o.rot + Math.sin(t * .7 + i) * .06, blur: o.blur });
+      const sz = o.s * pop * (1 + (cam.s - 1) * 1.2), spr = objSprite(o);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(o.rot + Math.sin(t * .7 + i) * .06); ctx.drawImage(spr, -sz * .6, -sz * .6, sz * 1.2, sz * 1.2); ctx.restore();
     });
     CAPS.forEach(c => caption(ctx, t, c));
     ctx.save(); ctx.translate(cam.fx, cam.fy); ctx.scale(cam.s, cam.s); ctx.translate(-cam.fx, -cam.fy);
@@ -722,7 +727,7 @@
         ctx.save(); ctx.globalAlpha = 1 - lt / .9; ctx.translate(px, py); ctx.rotate(lt * 8 + i);
         ctx.fillStyle = [C.gold, C.rose, C.lavender, '#57B887', C.gold2, C.blush][i % 6]; rr(ctx, -6, -3, 12, 6, 2); ctx.fill(); ctx.restore();
       }
-      const s = K.spring(t - LABEL_T - .04, 2.6, .45), lx = tx - 40, ly = ty - 175;
+      const s = K.spring(t - LABEL_T - .04, 2.6, .45), lx = tx - 130, ly = ty - 170;
       ctx.save(); ctx.translate(lx, ly); ctx.scale(s, s); ctx.rotate(-.03 * (1 - s));
       font(ctx, 30, 700); const w1 = ctx.measureText('Uncle Gary').width, w2 = ctx.measureText('Table 9').width, bw = 64 + w1 + 64 + w2 + 34;
       K.glass(ctx, -bw / 2, -38, bw, 76, 38, { fill: 'rgba(255,255,255,.93)' });
@@ -731,7 +736,7 @@
       ctx.lineWidth = 3; ctx.strokeStyle = C.rose; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 32, 0); ctx.moveTo(x + 22, -9); ctx.lineTo(x + 32, 0); ctx.lineTo(x + 22, 9); ctx.stroke(); x += 48;
       const L = K.layout(ctx, [{ text: 'Table 9', size: 30, weight: 700, grad: [C.gold, C.rose] }]); K.drawLine(ctx, L, x, 11, null, 'left');
       // pointer tail
-      ctx.beginPath(); ctx.moveTo(24, 37); ctx.lineTo(40, 56); ctx.lineTo(52, 37); ctx.fillStyle = 'rgba(255,255,255,.93)'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(114, 37); ctx.lineTo(130, 56); ctx.lineTo(146, 37); ctx.fillStyle = 'rgba(255,255,255,.93)'; ctx.fill();
       ctx.restore();
     }
   }
@@ -742,8 +747,8 @@
         K.zoomBlur(ctx, .2 * a, g => { g.translate(W / 2, H / 2); g.scale(1 + .14 * a, 1 + .14 * a); g.translate(-W / 2, -H / 2); drawPhoneWorld(g, t); });
         K.fade(ctx, .7 * a * a, '#FFF6EC');
       } else if (t >= OUT_T) {
-        const p = E.inExpo(R(t, OUT_T, 25.0, E.linear)), ps = phoneState(t), [tx, ty] = mapPt(ps, TABLES[5].x, TABLES[5].y - 60);
-        K.zoomBlur(ctx, .45 * p, g => { const s = 1 + 2.4 * p; g.translate(tx, ty); g.scale(s, s); g.translate(-tx, -ty); drawPhoneWorld(g, t); }, tx, ty);
+        const p = E.inCubic(R(t, OUT_T, 25.0, E.linear)), ps = phoneState(t), [tx, ty] = mapPt(ps, TABLES[5].x, TABLES[5].y - 60);
+        K.zoomBlur(ctx, .45 * p, g => { const s = 1 + 2.4 * p; g.translate(tx, ty); g.scale(s, s); g.translate(-tx, -ty); drawPhoneWorld(g, t); }, tx, ty, 9);
         K.fade(ctx, R(t, 24.72, 24.97, E.inQuad));
       } else drawPhoneWorld(ctx, t);
     },
