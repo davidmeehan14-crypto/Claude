@@ -370,24 +370,27 @@
     }
   }
   /** Full-frame scan world (DOF, scanner) into ctx. */
+  function worldSprite() { return K.cache('c:world', 2800, 2200, g => { g.drawImage(linenSprite(), 0, 0); g.drawImage(cardSprite(), 1400 - 550, 1100 - 750); }); }
+  function gradeSprite() {
+    return K.cache('c:grade', W, H, g => {
+      g.globalCompositeOperation = 'source-over'; K.blob(g, '#FFF3E0', 500, 200, 1100, 800, 0.22);
+      const vg = g.createRadialGradient(960, 540, 500, 960, 540, 1250); vg.addColorStop(0, 'rgba(60,35,20,0)'); vg.addColorStop(1, 'rgba(60,35,20,.28)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    });
+  }
   function drawScanWorld(ctx, t) {
-    const c = cam(t), sharp = K.offscreen('c:sharp'), sg = sharp.getContext('2d');
-    sg.setTransform(1, 0, 0, 1, 0, 0); sg.filter = 'none';
-    sg.save(); sg.translate(960, 540); sg.rotate(c.r); sg.scale(c.s, c.s); sg.translate(-c.fx, -c.fy);
-    sg.drawImage(linenSprite(), -1400, -1100); sg.drawImage(cardSprite(), -550, -750); sg.restore();
-    const small = K.offscreen('c:small', 480, 270), mg = small.getContext('2d');
-    mg.setTransform(1, 0, 0, 1, 0, 0); mg.filter = 'blur(2.2px)'; mg.drawImage(sharp, 0, 0, 480, 270); mg.filter = 'none';
-    ctx.drawImage(small, 0, 0, W, H);
-    const mask = K.offscreen('c:mask'), kg = mask.getContext('2d');
-    kg.setTransform(1, 0, 0, 1, 0, 0); kg.globalCompositeOperation = 'source-over'; kg.clearRect(0, 0, W, H); kg.drawImage(sharp, 0, 0);
-    const [qx, qy] = w2s(c, 0, QY), fx = lerp(960, qx, 0.6), fy = lerp(540, qy, 0.6);
-    kg.globalCompositeOperation = 'destination-in';
-    const gr = kg.createRadialGradient(fx, fy, 260, fx, fy, 820); gr.addColorStop(0, '#000'); gr.addColorStop(1, 'rgba(0,0,0,0)'); kg.fillStyle = gr; kg.fillRect(0, 0, W, H);
-    kg.globalCompositeOperation = 'source-over';
-    ctx.drawImage(mask, 0, 0);
-    // warm light + vignette
-    ctx.save(); ctx.globalCompositeOperation = 'screen'; K.blob(ctx, '#FFE9C7', 500, 200, 1100, 800, 0.22); ctx.restore();
-    const vg = ctx.createRadialGradient(960, 540, 500, 960, 540, 1250); vg.addColorStop(0, 'rgba(60,35,20,0)'); vg.addColorStop(1, 'rgba(60,35,20,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    const c = cam(t), ws = worldSprite();
+    const place = (g, k) => { g.setTransform(k, 0, 0, k, 0, 0); g.translate(960, 540); g.rotate(c.r); g.scale(c.s, c.s); g.translate(-c.fx, -c.fy); g.drawImage(ws, -1400, -1100); g.setTransform(1, 0, 0, 1, 0, 0); };
+    place(ctx, 1);
+    // depth of field: quarter-res blurred copy, faded out around the focus point, upscaled over the sharp frame
+    const s1 = K.offscreen('c:s1', 480, 270), g1 = s1.getContext('2d'); place(g1, 0.25);
+    const s2 = K.offscreen('c:s2', 480, 270), g2 = s2.getContext('2d'); g2.setTransform(1, 0, 0, 1, 0, 0); g2.globalCompositeOperation = 'source-over'; g2.clearRect(0, 0, 480, 270);
+    g2.filter = 'blur(2.4px)'; g2.drawImage(s1, 0, 0); g2.filter = 'none';
+    const [qx, qy] = w2s(c, 0, QY), fx = lerp(960, qx, 0.6) / 4, fy = lerp(540, qy, 0.6) / 4;
+    g2.globalCompositeOperation = 'destination-out';
+    const gr = g2.createRadialGradient(fx, fy, 60, fx, fy, 210); gr.addColorStop(0, '#000'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = gr; g2.fillRect(0, 0, 480, 270);
+    g2.globalCompositeOperation = 'source-over';
+    ctx.drawImage(s2, 0, 0, W, H);
+    ctx.drawImage(gradeSprite(), 0, 0);
     drawScanner(ctx, t, c);
   }
   let _freeze = null;
@@ -574,7 +577,7 @@
       if (!huge) K.phone(g, { x: L.x, y: L.y, h: L.h, shadow: L.h < 2000 }, sg => drawScreen2(sg, t), 'c');
       if (t < SC.sheet) { // full-res camera feed over the (low-res) phone buffer while the phone is huge
         const k = L.h / 880, sW = 390 * k, sH = 840 * k, m = lerp(1, 0.8, L.p);
-        g.save(); K.rr(g, L.x - sW / 2, L.y - sH / 2, sW, sH, 46 * k); g.clip();
+        g.save(); if (!huge) { K.rr(g, L.x - sW / 2, L.y - sH / 2, sW, sH, 46 * k); g.clip(); }
         g.save(); g.translate(960, 540); g.scale(m, m); g.drawImage(scanBuffer(t), -960, -540); g.restore();
         g.translate(L.x - sW / 2, L.y - sH / 2); g.scale(k, k); K.UI.statusBar(g, true); g.restore();
         K.rr(g, L.x - 62 * k, L.y - sH / 2 + 12 * k, 124 * k, 36 * k, 18 * k); g.fillStyle = '#000'; g.fill();
