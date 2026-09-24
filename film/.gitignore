@@ -3,3 +3,9 @@ out/.segments/
 audio/.models/
 *.pyc
 __pycache__/
+audio/sfx/
+audio/qc/
+audio/stems/
+audio/lines/
+audio/*.wav
+audio/**/*.mp3
