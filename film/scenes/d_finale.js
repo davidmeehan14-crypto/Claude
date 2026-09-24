@@ -84,7 +84,7 @@
     g.save(); g.translate(x, y); g.rotate(ang);
     g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(len * .5, -len * .42, len, 0); g.quadraticCurveTo(len * .5, len * .42, 0, 0);
     g.fillStyle = LEAF; g.fill(); g.lineWidth = lw; g.strokeStyle = P.ink; g.stroke();
-    g.beginPath(); g.moveTo(len * .12, 0); g.lineTo(len * .78, 0); g.lineWidth = lw * .6; g.stroke();
+    if (len > 18) { g.beginPath(); g.moveTo(len * .12, 0); g.lineTo(len * .78, 0); g.lineWidth = lw * .6; g.stroke(); }
     g.restore();
   }
   function petal(g, dist, ang, rx, ry, fill) {
@@ -139,31 +139,11 @@
       }
     }
   }
-  // Settled flowers/bushes are drawn from cached sprites (2 boil variants) — rasterising ~70 inked
-  // flowers + bushes live costs ~35 ms/frame on the software renderer.
-  const SPR_RES = 2, SPRITES = new Map();
-  function sprite(key, w, h, ox, oy, paint) {
-    let c = SPRITES.get(key); if (c) return c;
-    c = F.canvas(Math.ceil(w * SPR_RES), Math.ceil(h * SPR_RES));
-    const g = c.getContext('2d'); g.scale(SPR_RES, SPR_RES); g.translate(ox, oy); paint(g);
-    c.ox = ox; c.oy = oy; SPRITES.set(key, c); return c;
-  }
-  function blit(g, c, x, y, rot) {
-    g.save(); g.translate(x, y); if (rot) g.rotate(rot);
-    g.drawImage(c, -c.ox, -c.oy, c.width / SPR_RES, c.height / SPR_RES); g.restore();
-  }
-  function drawFlower(g, f, x, y, sc, t, frozen) {
-    const dt = frozen ? 10 : t - f.tb; if (dt <= 0) return;
+  function drawFlower(g, f, x, y, sc, t) {
+    const dt = t - f.tb; if (dt <= 0) return;
     const R = 40 * sc, lw = Math.max(1.5, 3.3 * sc);
-    if (!frozen && dt > 1.5) {
-      const v = F.boil(t) % 2, stemH = f.stemless ? 0 : 95 * sc, m = R * 1.6 + 45 * sc + Math.abs(f.lean || 0) * stemH;
-      const c = sprite('f' + f.seed + ':' + v + ':' + sc.toFixed(3), 2 * m, stemH + R * 1.6 + 30 * sc + 6, m, stemH + R * 1.5 + 3, gg => drawFlower(gg, f, 0, 0, sc, v / 12 + .001, true));
-      const sway = noise1(t * .7 + f.seed, 3) * 5 * sc;
-      blit(g, c, x, y, f.stemless ? sway * .01 : sway / Math.max(20, stemH));
-      return;
-    }
     let hx = x, hy = y;
-    const sway = frozen ? 0 : noise1(t * .7 + f.seed, 3) * 5 * sc;
+    const sway = noise1(t * .7 + f.seed, 3) * 5 * sc;
     if (!f.stemless) {
       const grow = ease.outBack(clamp(dt / .16), 1.3), stemH = 95 * sc * grow;
       hx = x + sway + (f.lean || 0) * stemH; hy = y - stemH;
@@ -177,7 +157,7 @@
     g.save(); g.translate(hx, hy); g.rotate((f.lean || 0) * .6 + sway * .01 + jiggle(dt - .1, 2.5, 4) * .1);
     flowerHead(g, f, R, dt, t, lw);
     g.restore();
-    if (!frozen && (f.main || f.stemless)) { // bloom sparkle
+    if (f.main || f.stemless) { // bloom sparkle
       const sp = invLerp(.06, .42, dt);
       if (sp > 0 && sp < 1) {
         g.save(); g.globalAlpha = 1 - sp;
@@ -186,13 +166,8 @@
       }
     }
   }
-  function drawBush(g, b, x, y, sc, t, frozen) {
-    const dt = frozen ? 10 : t - b.tb; if (dt <= 0) return;
-    if (!frozen && dt > 1.3) {
-      const v = F.boil(t) % 2, m = 100 * sc * b.size;
-      blit(g, sprite('b' + b.seed + ':' + v, 2 * m, m * 1.05, m, m * .95, gg => drawBush(gg, b, 0, 0, sc, v / 12 + .001, true)), x, y);
-      return;
-    }
+  function drawBush(g, b, x, y, sc, t) {
+    const dt = t - b.tb; if (dt <= 0) return;
     const k = Math.max(0, spring(dt, 2.6, .35)); if (k <= 0) return;
     const blobs = [[-44, -26, 34], [-8, -46, 42], [34, -30, 34], [8, -14, 36], [-30, -8, 26], [44, -8, 24]];
     g.save(); g.translate(x, y); g.scale(sc * b.size * k, sc * b.size * k);
@@ -229,6 +204,7 @@
     g.save(); F.smoothOpen(g, HILLS); g.lineTo(2200, VPY + 20); g.lineTo(-300, VPY + 20); g.closePath(); g.fillStyle = 'rgba(242,206,160,.7)'; g.fill(); g.restore();
     g.save(); g.fillStyle = 'rgba(236,220,190,.55)'; g.fillRect(-400, VPY + 10, W + 800, H + 400); g.restore();
     g.save(); g.globalCompositeOperation = 'soft-light'; g.fillStyle = 'rgba(255,190,110,.35)'; g.fillRect(0, 0, W, H); g.restore();
+    F.vignette(g, .22, '120,70,30');
     return (BG = c);
   }
   function background(g, t) {
@@ -585,7 +561,6 @@
     if (t > 51.2) { F.confetti(g, t, 51.2, { x: 120, y: 1100, angle: -1.05, spread: .7, speed: 1900, n: 90, seed: 21 }); F.confetti(g, t, 51.2, { x: 1800, y: 1100, angle: -2.09, spread: .7, speed: 1900, n: 90, seed: 22 }); }
     motes(g, t);
     g.restore();
-    F.vignette(g, .22, '120,70,30');
     // kiss flash
     const kf = 1 - invLerp(51.2, 51.42, t);
     if (t >= 51.2 && kf > 0) { g.save(); g.globalAlpha = kf * .55; g.fillStyle = '#FFF6DE'; g.fillRect(0, 0, W, H); g.restore(); }
@@ -612,6 +587,11 @@
   const spreadImg = k => (k === 0 ? WORLD_IMG : thumb(SNAP_T[k - 1]));
   const half = (img, side) => ({ img, sx: side ? img.width / 2 : 0, sy: 0, sw: img.width / 2, sh: img.height });
 
+  function softShadow(g, x, y, w, h) { // cheap layered drop shadow (shadowBlur is slow on the software renderer)
+    g.save(); g.fillStyle = 'rgba(0,0,0,.13)';
+    for (let i = 7; i >= 0; i--) { const e = i * 16; rrect(g, x - e * .6, y - e * .4 + 30, w + e * 1.2, h + e * .8 + 10, 20 + e); g.fill(); }
+    g.restore();
+  }
   function rrect(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
   function clothTexture(g, w, h, seed) {
     const r = F.rng(seed);
@@ -778,8 +758,7 @@
     ctx.save(); applyCam(ctx, cam);
     const leftGone = t >= COVER_S;
     // shadow + boards
-    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 70 * z; ctx.shadowOffsetY = 26 * z;
-    rrect(ctx, leftGone ? 0 : -CW, -CH / 2, leftGone ? CW : 2 * CW, CH, 16); ctx.fillStyle = CLOTH_DK; ctx.fill(); ctx.restore();
+    softShadow(ctx, leftGone ? 0 : -CW, -CH / 2, leftGone ? CW : 2 * CW, CH);
     rrect(ctx, leftGone ? 0 : -CW, -CH / 2, leftGone ? CW : 2 * CW, CH, 16); ctx.fillStyle = CLOTH; ctx.fill(); ctx.lineWidth = 5 / z; ctx.strokeStyle = '#0A0A12'; ctx.stroke();
     // page-block edges
     ctx.fillStyle = '#D9C9AA'; ctx.fillRect(leftGone ? 0 : -PW - 6, -PH / 2 + 4, leftGone ? PW + 6 : 2 * PW + 12, PH + 10);
@@ -857,8 +836,8 @@
     ctx.drawImage(table(), 0, 0);
     ctx.save(); applyCam(ctx, cam);
     // shadow, back board, page block, cover
-    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = 70 * z; ctx.shadowOffsetY = 28 * z;
-    rrect(ctx, 0, -CH / 2 + 4, CW, CH + 22, 16); ctx.fillStyle = CLOTH_DK; ctx.fill(); ctx.restore();
+    softShadow(ctx, 0, -CH / 2 + 4, CW, CH + 22);
+    rrect(ctx, 0, -CH / 2 + 4, CW, CH + 22, 16); ctx.fillStyle = CLOTH_DK; ctx.fill();
     ctx.fillStyle = '#E4D6BA'; ctx.fillRect(10, CH / 2 - 10, CW - 26, 24);
     ctx.strokeStyle = 'rgba(120,95,60,.55)'; ctx.lineWidth = 1.3 / z;
     for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(12, CH / 2 + 2 + k * 3.4); ctx.lineTo(CW - 18, CH / 2 + 2 + k * 3.4); ctx.stroke(); }
@@ -982,20 +961,21 @@
     subtitle(t, line) { return line.speaker === 'narrator' ? false : null; },
     draw(ctx, t) {
       // warm the flipbook thumbnails a few at a time before they are needed
-      if (t >= 49.9 && t < 52.4) { const n = Math.min(NL, Math.floor((t - 49.9) / .15) + 1); for (let k = 0; k < n; k++) thumb(SNAP_T[k]); }
+      if (t >= 46.5 && t < 52.4) { const n = Math.min(NL, Math.floor((t - 46.5) / .36) + 1); for (let k = 0; k < n; k++) thumb(SNAP_T[k]); }
       if (t < 52) {
         drawWorld(ctx, t, worldCam(t));
         const fl = 1 - ease.outCubic(invLerp(46.0, 46.55, t));
         if (fl > 0) {
           ctx.save(); ctx.globalAlpha = fl;
-          const g = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, W * .7); g.addColorStop(0, '#FFFFFF'); g.addColorStop(.6, '#FFF3D0'); g.addColorStop(1, '#FFD98A');
+          const g = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, W * .7); g.addColorStop(0, '#FFFFFF'); g.addColorStop(.6, '#FFF6DE'); g.addColorStop(1, '#FFE8B4');
           ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
         }
       } else if (t < 54) {
         const needWorld = t < LEAVES[0].s + LEAVES[0].d;
         if (needWorld) {
-          const Wc = F.offscreen('d_world'), g = Wc.getContext('2d');
+          const lo = t >= 52.2, Wc = lo ? F.offscreen('d_world_lo', 1280, 720) : F.offscreen('d_world'), g = Wc.getContext('2d');
           g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+          if (lo) g.scale(2 / 3, 2 / 3); // the page is already < 0.8× on screen by now
           g.save(); drawWorld(g, t, { zoom: 1, x: 960, y: 540 }); g.restore();
           WORLD_IMG = Wc;
         }
