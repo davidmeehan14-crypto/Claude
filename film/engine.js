@@ -645,7 +645,7 @@
   // ───────────────────────────── subtitles ─────────────────────────────
   const SPEAKER = { dot: { name: 'DOT', col: PAL.coral }, dash: { name: 'DASH', col: PAL.cobalt }, narrator: { name: '', col: PAL.gold } };
   function subtitles(ctx, t) {
-    const l = lines().find(l => t >= l.start - .05 && t < l.end + .45);
+    const l = lines().filter(l => t >= l.start - .05 && t < l.end + .45).sort((a, b) => b.start - a.start)[0];
     if (!l) return;
     const scn = sceneAt(t), pos = scn && scn.subtitle ? scn.subtitle(t, l) : null;
     if (pos === false) return;

@@ -139,20 +139,31 @@
       }
     }
   }
+  // Settled flowers/bushes are drawn from cached sprites (2 boil variants) — rasterising ~70 inked
+  // flowers + bushes live costs ~35 ms/frame on the software renderer.
   const SPR_RES = 2, SPRITES = new Map();
-  function headSprite(f, R, lw, v) {
-    const key = f.seed + ':' + v + ':' + Math.round(R * 10);
+  function sprite(key, w, h, ox, oy, paint) {
     let c = SPRITES.get(key); if (c) return c;
-    const sz = Math.ceil(R * 2.8 * SPR_RES); c = F.canvas(sz, sz);
-    const g = c.getContext('2d'); g.translate(sz / 2, sz / 2); g.scale(SPR_RES, SPR_RES);
-    flowerHead(g, f, R, 10, v / 12 + .001, lw);
-    SPRITES.set(key, c); return c;
+    c = F.canvas(Math.ceil(w * SPR_RES), Math.ceil(h * SPR_RES));
+    const g = c.getContext('2d'); g.scale(SPR_RES, SPR_RES); g.translate(ox, oy); paint(g);
+    c.ox = ox; c.oy = oy; SPRITES.set(key, c); return c;
   }
-  function drawFlower(g, f, x, y, sc, t) {
-    const dt = t - f.tb; if (dt <= 0) return;
+  function blit(g, c, x, y, rot) {
+    g.save(); g.translate(x, y); if (rot) g.rotate(rot);
+    g.drawImage(c, -c.ox, -c.oy, c.width / SPR_RES, c.height / SPR_RES); g.restore();
+  }
+  function drawFlower(g, f, x, y, sc, t, frozen) {
+    const dt = frozen ? 10 : t - f.tb; if (dt <= 0) return;
     const R = 40 * sc, lw = Math.max(1.5, 3.3 * sc);
+    if (!frozen && dt > 1.5) {
+      const v = F.boil(t) % 2, stemH = f.stemless ? 0 : 95 * sc, m = R * 1.6 + 45 * sc + Math.abs(f.lean || 0) * stemH;
+      const c = sprite('f' + f.seed + ':' + v + ':' + sc.toFixed(3), 2 * m, stemH + R * 1.6 + 30 * sc + 6, m, stemH + R * 1.5 + 3, gg => drawFlower(gg, f, 0, 0, sc, v / 12 + .001, true));
+      const sway = noise1(t * .7 + f.seed, 3) * 5 * sc;
+      blit(g, c, x, y, f.stemless ? sway * .01 : sway / Math.max(20, stemH));
+      return;
+    }
     let hx = x, hy = y;
-    const sway = noise1(t * .7 + f.seed, 3) * 5 * sc;
+    const sway = frozen ? 0 : noise1(t * .7 + f.seed, 3) * 5 * sc;
     if (!f.stemless) {
       const grow = ease.outBack(clamp(dt / .16), 1.3), stemH = 95 * sc * grow;
       hx = x + sway + (f.lean || 0) * stemH; hy = y - stemH;
@@ -164,12 +175,9 @@
       for (let i = 0; i < 3; i++) leafShape(g, x, y, 34 * sc * lk, f.seed + i * 2.1, lw * .8);
     }
     g.save(); g.translate(hx, hy); g.rotate((f.lean || 0) * .6 + sway * .01 + jiggle(dt - .1, 2.5, 4) * .1);
-    if (dt > 1.4) { // settled: use a cached sprite (2 boil variants)
-      const v = F.boil(t) % 2, spr = headSprite(f, R, lw, v);
-      g.drawImage(spr, -spr.width / 2 / SPR_RES, -spr.height / 2 / SPR_RES, spr.width / SPR_RES, spr.height / SPR_RES);
-    } else flowerHead(g, f, R, dt, t, lw);
+    flowerHead(g, f, R, dt, t, lw);
     g.restore();
-    if (f.main || f.stemless) { // bloom sparkle
+    if (!frozen && (f.main || f.stemless)) { // bloom sparkle
       const sp = invLerp(.06, .42, dt);
       if (sp > 0 && sp < 1) {
         g.save(); g.globalAlpha = 1 - sp;
@@ -178,8 +186,13 @@
       }
     }
   }
-  function drawBush(g, b, x, y, sc, t) {
-    const dt = t - b.tb; if (dt <= 0) return;
+  function drawBush(g, b, x, y, sc, t, frozen) {
+    const dt = frozen ? 10 : t - b.tb; if (dt <= 0) return;
+    if (!frozen && dt > 1.3) {
+      const v = F.boil(t) % 2, m = 100 * sc * b.size;
+      blit(g, sprite('b' + b.seed + ':' + v, 2 * m, m * 1.05, m, m * .95, gg => drawBush(gg, b, 0, 0, sc, v / 12 + .001, true)), x, y);
+      return;
+    }
     const k = Math.max(0, spring(dt, 2.6, .35)); if (k <= 0) return;
     const blobs = [[-44, -26, 34], [-8, -46, 42], [34, -30, 34], [8, -14, 36], [-30, -8, 26], [44, -8, 24]];
     g.save(); g.translate(x, y); g.scale(sc * b.size * k, sc * b.size * k);
@@ -553,27 +566,26 @@
   function drawWorld(g, t, cam) {
     g.save();
     F.camera(g, cam);
-    if (!(window.DX||{}).bg) background(g, t);
+    background(g, t);
     aisle(g, t);
     // depth-sorted items (far → near)
     const items = [];
-    for (const b of BUSHES) if (!(window.DX||{}).bush) items.push([b.z, () => drawBush(g, b, xAt(b.off, b.z), yAt(b.z) + 4, 1.2 / b.z, t)]);
-    for (const f of FLOWERS) if (!(window.DX||{}).fl) items.push([f.z, () => drawFlower(g, f, xAt(f.off, f.z), yAt(f.z), f.size * 1.2 / f.z, t)]);
-    if (!(window.DX||{}).arch) items.push([ZA + .01, () => drawArch(g, t)]);
-    if (!(window.DX||{}).couple) items.push([ZA - .005, () => drawCouple(g, t)]);
+    for (const b of BUSHES) items.push([b.z, () => drawBush(g, b, xAt(b.off, b.z), yAt(b.z) + 4, 1.2 / b.z, t)]);
+    for (const f of FLOWERS) items.push([f.z, () => drawFlower(g, f, xAt(f.off, f.z), yAt(f.z), f.size * 1.2 / f.z, t)]);
+    items.push([ZA + .01, () => drawArch(g, t)]);
+    items.push([ZA - .005, () => drawCouple(g, t)]);
     const bs = biscuitState(t);
     if (t > 46.85) items.push([bs.z, () => F.drawBiscuit(g, bs.s)]);
     items.sort((a, b) => b[0] - a[0]);
-    const X = window.DX || {};
-    for (const it of items) { if (X.items) continue; g.save(); it[1](); g.restore(); }
+    for (const it of items) { g.save(); it[1](); g.restore(); }
     // climax FX
     heartWave(g, t, 962, 612);
     petalBurst(g, t, 51.2, 962, 620, 70, 511);
     for (const fw of FW) firework(g, t, fw);
     if (t > 51.2) { F.confetti(g, t, 51.2, { x: 120, y: 1100, angle: -1.05, spread: .7, speed: 1900, n: 90, seed: 21 }); F.confetti(g, t, 51.2, { x: 1800, y: 1100, angle: -2.09, spread: .7, speed: 1900, n: 90, seed: 22 }); }
-    if (!X.motes) motes(g, t);
+    motes(g, t);
     g.restore();
-    if (!X.vig) F.vignette(g, .22, '120,70,30');
+    F.vignette(g, .22, '120,70,30');
     // kiss flash
     const kf = 1 - invLerp(51.2, 51.42, t);
     if (t >= 51.2 && kf > 0) { g.save(); g.globalAlpha = kf * .55; g.fillStyle = '#FFF6DE'; g.fillRect(0, 0, W, H); g.restore(); }
