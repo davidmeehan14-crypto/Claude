@@ -10,7 +10,11 @@ from core import (SR, ns, tarr, hz, m, mtof, adsr, perc, automation, saw, pulse,
 
 
 def _f(note):
-    return hz(note) if isinstance(note, str) else float(note)
+    """Note name, MIDI number (< 128) or frequency in Hz (>= 128) -> Hz."""
+    if isinstance(note, str):
+        return hz(note)
+    v = float(note)
+    return float(mtof(v)) if v < 128 else v
 
 
 def _modal(f, dur, parts, att=0.001, click=0.0, click_fc=6000, phase_rand=True):
@@ -108,6 +112,8 @@ def harp(note, dur=3.0, vel=1.0):
     y = karplus(f, dur, bright=0.45 + 0.25 * vel, t60=t60, pos=0.12)
     y = y + 0.3 * sine(f, len(y)) * np.exp(-6.9 * tarr(len(y)) / t60)
     y = biquad(y, 'peak', 180, 1.0, 2.0)
+    y = butter(y, 'lp', min(12000, f * 9))
+    y[:48] *= np.linspace(0, 1, 48)
     return normalize(y, 0.9)
 
 

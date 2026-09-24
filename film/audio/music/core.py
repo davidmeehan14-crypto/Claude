@@ -340,6 +340,7 @@ def karplus(f, dur, bright=0.6, t60=1.5, S=0.5, pos=0.18):
     loss = 10 ** (-3.0 / (f * t60))
     y = _ks(e2, n, N, C, loss, S)
     y /= (np.abs(y[:min(n, 4 * N)]).max() + 1e-9)
+    y[:24] *= np.linspace(0, 1, 24)
     k = min(n, 200)
     y[-k:] *= np.linspace(1, 0, k)
     return y

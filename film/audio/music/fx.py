@@ -81,7 +81,7 @@ def wobble(x, depth_cents=15.0, rate=5.0, seed=3, rate_var=0.5):
     dep = np.asarray(depth_cents) * np.ones(n)
     # delay modulation amplitude that gives the requested pitch deviation
     amp = (2 ** (dep / 1200) - 1) / (2 * np.pi * rate) * SR
-    d = 60 + amp * lfo
+    d = 120 + amp * lfo
     return np.stack([_frac_delay(x[:, c], d) for c in range(2)], axis=1)
 
 
