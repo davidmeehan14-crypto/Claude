@@ -74,9 +74,27 @@
 
   // generic text with alpha/blur/scale about glyph centre
   function mw(ctx, s, o) { K.font(ctx, o.size, o.weight || 500, o.family || F.sans, o.style || 'normal'); return ctx.measureText(s).width; }
+  // blurred text via cached sprites (canvas filter per glyph is too slow)
+  function textSprite(s, o, bq) {
+    const key = ['c:tx', s, o.size, o.weight, o.family, o.style, o.color, o.grad ? o.grad.join() + (o.gOff || 0) + '/' + (o.gw || 0) : '', bq].join('|');
+    const tmp = K.offscreen('c:measure', 4, 4).getContext('2d'), w = mw(tmp, s, o), pad = Math.ceil(o.size * 0.5 + bq * 2.5);
+    return K.cache(key, w + pad * 2, o.size * 1.6 + pad * 2, (g, cw, ch) => {
+      K.font(g, o.size, o.weight || 500, o.family || F.sans, o.style || 'normal'); g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+      if (bq > 0) g.filter = `blur(${bq}px)`;
+      const X = pad, Y = pad + o.size * 1.15;
+      if (o.grad) { const g0 = X - (o.gOff || 0), gr = g.createLinearGradient(g0, Y - o.size, g0 + (o.gw || w), Y); o.grad.forEach((c, k) => gr.addColorStop(k / (o.grad.length - 1), c)); g.fillStyle = gr; } else g.fillStyle = o.color || C.ink;
+      g.fillText(s, X, Y);
+    });
+  }
   function txt(ctx, s, x, y, o) {
     const a = o.a == null ? 1 : o.a; if (a <= 0.003) return 0;
     const w = mw(ctx, s, o);
+    if (o.blur > 0.3) {
+      const bq = Math.min(28, Math.round(o.blur / 2) * 2) || 2, spr = textSprite(s, o, bq), pad = Math.ceil(o.size * 0.5 + bq * 2.5);
+      ctx.save(); ctx.globalAlpha *= clamp(a);
+      ctx.translate(x + (o.dx || 0) + w / 2, y + (o.dy || 0) - o.size * 0.35); const sc = o.s == null ? 1 : o.s; if (sc !== 1) ctx.scale(sc, sc); if (o.rot) ctx.rotate(o.rot);
+      ctx.drawImage(spr, -w / 2 - pad, o.size * 0.35 - pad - o.size * 1.15); ctx.restore(); return w;
+    }
     ctx.save(); ctx.globalAlpha *= clamp(a);
     if (o.blur > 0.3) ctx.filter = `blur(${o.blur.toFixed(1)}px)`;
     const cx = x + (o.dx || 0) + w / 2, cy = y + (o.dy || 0) - o.size * 0.35;
@@ -159,10 +177,10 @@
     let i = 0; while (i + 1 < MORPH.length && t >= TB.morph[i + 1]) i++;
     const dt = t - TB.morph[i], size = 196, last = i === MORPH.length - 1, first = i === 0;
     const bob = Math.sin((t - 27.5) * 2.6) * 5, rot = Math.sin((t - 27.5) * 1.7) * 0.06;
-    if (!first && dt < 0.12) { const u = dt / 0.12; K.obj(ctx, MORPH[i - 1], ox, oy + bob, size * (1 - 0.45 * u), { rot: rot - u * 0.5, alpha: 1 - u, blur: u * 10, shadow: false }); }
+    if (!first && dt < 0.12) { const u = dt / 0.12; objB(ctx, MORPH[i - 1], ox, oy + bob, size * (1 - 0.45 * u), { rot: rot - u * 0.5, alpha: 1 - u, blur: Math.round(u * 5) * 2 }); }
     const s = first ? sp(dt, 2.2, 0.36) : last ? 0.55 + 0.45 * sp(dt, 2.0, 0.3) : 0.55 + 0.45 * sp(dt, 3.2, 0.45);
     const r0 = (i % 2 ? 1 : -1) * 0.45 * (1 - ease.outCubic(clamp(dt / 0.25)));
-    K.obj(ctx, MORPH[i], ox, oy + bob, size * s, { rot: rot + r0, alpha: first ? clamp(dt / 0.06) : clamp(0.4 + dt / 0.06), blur: (1 - clamp(dt / (first ? 0.15 : 0.1))) * (first ? 12 : 8) });
+    objB(ctx, MORPH[i], ox, oy + bob, size * s, { rot: rot + r0, alpha: first ? clamp(dt / 0.06) : clamp(0.4 + dt / 0.06), blur: Math.round((1 - clamp(dt / (first ? 0.15 : 0.1))) * (first ? 6 : 4)) * 2 });
     if (last) { burst(ctx, ox, oy, dt, 10, 190, 41); const gl = pulse(t, 28.5, 28.8); if (gl > 0) { ctx.save(); ctx.globalCompositeOperation = 'screen'; K.blob(ctx, '#FFF3D0', ox, oy - 40, 160 * gl + 40, 140 * gl + 30, 0.8 * gl); ctx.restore(); } }
   }
   function line3(ctx, t) {
@@ -526,7 +544,14 @@
     const a = t - popT; if (a < 0) return null;
     return { name, x: x3 + fx, y: y3 + fy, size: s3 * sp(a, 2.2, 0.42), blur: b3, rot, alpha: clamp(a / 0.08) };
   }
-  function drawObjs(ctx, t) { OBJ3.forEach((o, i) => { const p = objPos(i, t); if (p && p.size > 2) K.obj(ctx, p.name, p.x, p.y, p.size, { rot: p.rot, blur: p.blur > 0.3 ? p.blur : 0, alpha: p.alpha }); }); }
+  function objB(ctx, name, x, y, size, o) { // K.obj with cached blurred sprite
+    const bq = Math.round((o.blur || 0) * 400 / size); if (bq < 1) { K.obj(ctx, name, x, y, size, { rot: o.rot, alpha: o.alpha }); return; }
+    const spr = K.cache('c:ob:' + name + bq, 480, 480, g => { const tmp = K.canvas(400, 400); K.obj(tmp.getContext('2d'), name, 200, 200, 400, { shadow: false }); g.filter = `blur(${bq}px)`; g.drawImage(tmp, 40, 40); });
+    ctx.save(); ctx.globalAlpha *= o.alpha == null ? 1 : o.alpha; ctx.translate(x, y); ctx.rotate(o.rot || 0);
+    ctx.save(); ctx.globalAlpha *= 0.22; K.blob(ctx, '#6B4C8A', size * 0.08, size * 0.42, size * 0.42, size * 0.12, 1); ctx.restore();
+    ctx.drawImage(spr, -size * 0.6, -size * 0.6, size * 1.2, size * 1.2); ctx.restore();
+  }
+  function drawObjs(ctx, t) { OBJ3.forEach((o, i) => { const p = objPos(i, t); if (p && p.size > 2) objB(ctx, p.name, p.x, p.y, p.size, { rot: p.rot, blur: p.blur, alpha: p.alpha }); }); }
 
   function drawScan(ctx, t) {
     if (t < SC.pull) {
