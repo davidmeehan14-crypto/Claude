@@ -202,15 +202,15 @@ def compose(irs):
                                            gainauto(M, [(0, 0), (15, 0), (15.5, -3), (24.5, -3), (25, 0),
                                                         (29, 0), (29.5, -1.5), (45, -1.5)])])
     arp = M.tr('arp', -20, {'hall': 0.15}, [pp(0.375, 0.38, 0.35, 4500), sc(kicks, 0.3, 0.12)])
-    hook = M.tr('hook', -13, {'plate': 0.22, 'hall': 0.1},
+    hook = M.tr('hook', -11, {'plate': 0.22, 'hall': 0.1},
                 [pp(0.375, 0.3, 0.22, 5000), sc(kicks, 0.2, 0.1),
                  gainauto(M, [(0, 0), (16.0, 0), (16.5, -3.5), (22.5, -3.5), (23, -1), (29, 0), (45, 0)])])
     sparkle = M.tr('sparkle', -18, {'hall': 0.4, 'plate': 0.1}, [pp(0.75, 0.35, 0.25, 7000)])
     stab = M.tr('stab', -18, {'plate': 0.18}, [sc(kicks, 0.45, 0.12), eq('hp', 220)])
     lead2 = M.tr('supersaw_lead', -24, {'hall': 0.25}, [sc(kicks, 0.3, 0.12)])
-    bassT = M.tr('bass', -12, {}, [sc(kicks, 0.55, 0.11), eq('hp', 32)])
+    bassT = M.tr('bass', -13, {}, [sc(kicks, 0.55, 0.11), eq('hp', 32)])
     subT = M.tr('sub', -14, {}, [sc(kicks, 0.5, 0.14), eq('hp', 28)])
-    kick = M.tr('kick', -7, {'room': 0.03})
+    kick = M.tr('kick', -9, {'room': 0.03})
     clapT = M.tr('clap', -13, {'plate': 0.18, 'room': 0.1})
     snapT = M.tr('snap', -15, {'room': 0.2, 'plate': 0.1})
     snr = M.tr('snare', -15, {'plate': 0.15})
@@ -313,7 +313,7 @@ def compose(irs):
         name = BARS[bt]
         chord_pad(bt, name, 2.0, -2, a=0.08, r=0.6, cutoff=2400)
         arp_bar(bt, name, -1, 0.75)
-        K(bt, 'soft', -3)
+        K(bt, 'punch' if bt == 3 else 'soft', -2 if bt == 3 else -3)
         K(bt + 1.0, 'soft', -5)
         if bt == 7:
             K(bt + 1.75, 'soft', -8)
@@ -321,7 +321,8 @@ def compose(irs):
             snapT.add(bt + s * S16, snap(), 0, pan=0.15)
         clapT.add(bt + 1.5, D.clap(), -6)
         shaker_bar(bt, -2)
-        sub_note(bt, name, 1.95, -1)
+        sub_note(bt, name, 1.95, -4)
+    hit.add(3.0, D.crash(2.0, 1.6, 0.8), -14, 0.3)
     # ring "yes" pop at 4.5 -> a little glock accent
     sparkle.add(4.5, I.glock('A6', 1.5, 0.8), -4, 0.2)
     # 8.5 icons sucked in: reverse swell into 9.0
@@ -352,13 +353,16 @@ def compose(irs):
     # ================================================= 13-15 BREAK / LIFT
     hit.add(13.0, D.crash(2.0, 1.5, 0.8), -14, -0.2)
     pad.add(13.0, air_pad(PAD['Asus'], 2.2, a=0.02, gate=1.98, r=0.05,
-                          cutoff_env=[(0, 350), (1.0, 900), (1.9, 7000), (2.2, 7000)], hp=250), 3)
-    sub_note(13.0, 'Asus', 1.0, -3)
+                          cutoff_env=[(0, 500), (1.0, 1200), (1.9, 8000), (2.2, 8000)], hp=450), 10)
+    sub_note(13.0, 'Asus', 0.5, -6)
     for s in range(16):  # filtered 8th arp rising
         tt = 13.0 + s * S16
         u = s / 16
         arp.add(tt, pluck(ARP['Asus'][s % 8], 0.3, 0.2 + 0.8 * u, 0.05), -6 + 4 * u,
                 pan=0.4 * np.sin(s * 1.3))
+    # filtered hook call over the build (opens up with the sweep)
+    for s, nn in ((0, 'E5'), (3, 'D5'), (6, 'E5'), (8, 'A5'), (10, 'B5'), (12, 'A5')):
+        hook.add(13.0 + s * S16, pluck(nn, 0.45, 0.25 + s * 0.04, 0.1), -4)
     # snap together at 14.0
     clapT.add(14.0, D.clap(), -2)
     snapT.add(14.0, snap(), 0)
@@ -369,7 +373,7 @@ def compose(irs):
     for tt in D.roll_times(13.0, 14.875, 4.0, 16.0, 1.0):
         u = (tt - 13.0) / 1.875
         snr.add(tt, D.snare(0.2, 210 + 60 * u), -12 + 12 * u, pan=0.1 * np.sin(tt * 20))
-    rise.add(13.0, D.riser(1.875, 300, 12000, True, 2.0, 110.0, 880.0), 2)
+    rise.add(13.0, D.riser(1.875, 300, 12000, True, 1.4, 110.0, 880.0), 4)
     fxT.add(15.0 - 1.9, D.reverse_cymbal(1.9), 0)
     pad.add(15.0 - 1.5, rev_swell(I.choir(PAD['D'][1:], 1.6, a=0.01, vowel='a'), 1.5), -8)
 
@@ -456,7 +460,7 @@ def compose(irs):
     for tt, name, notes in ((38.0, 'G/B', ['B4', 'D5', 'G5']), (39.5, 'Asus', ['A4', 'D5', 'E5', 'A5'])):
         for i, nn in enumerate(notes):
             hook.add(tt + i * 0.012, pluck(nn, 1.0, 0.7, 0.18), -3, pan=-0.2 + 0.15 * i)
-        sub_note(tt, name, 0.9 if tt < 39 else 1.2, -4)
+        sub_note(tt, name, 0.9 if tt < 39 else 1.2, -9)
         sparkle.add(tt, I.celesta(notes[-1] if tt < 39 else 'A6', 1.8, 0.7), -8, 0.2)
     # little answer plucks (typing feel)
     for tt, nn in ((38.5, 'D5'), (38.75, 'G5'), (39.0, 'B5'), (40.0, 'E5'), (40.25, 'A5'), (40.5, 'B5')):
@@ -478,7 +482,7 @@ def compose(irs):
     kicks.append(41.0)
     finalpad.add(41.0, air_pad(PAD['Dadd9'], 4.0, a=0.005, gate=2.4, r=1.2,
                                cutoff_env=[(0, 6000), (0.4, 3000), (3.0, 1400), (4.0, 900)]), 0)
-    finalpad.add(41.0, I.supersaw(['D2'], 3.6, voices=3, detune=8, a=0.005, gate=2.2, r=1.0, cutoff=500), -8)
+    finalpad.add(41.0, I.supersaw(['D2'], 3.6, voices=3, detune=8, a=0.005, gate=2.2, r=1.0, cutoff=500), -13)
     choirT.add(41.0, I.choir(['D4', 'F#4', 'A4', 'E5'], 3.8, a=0.3, r=1.2, gate=2.4, vowel='a'), 0)
     subT.add(41.0, softclip(sine(float(440 * 2 ** ((m('D1') - 69) / 12)), ns(3.0)), 1.3)
              * I.adsr(ns(3.0), 0.005, 0.6, 0.5, 0.8, 2.0), 0)
@@ -491,7 +495,7 @@ def compose(irs):
     sparkle.add(43.0, I.glock('D7', 1.5, 0.5), -12, 0)
 
     # ---- hook stutter 14.5 -> 15.0 (repeats the 14.5 slice, climbing)
-    hook.post.insert(0, lambda x: fx.stutter(x, 0.0, 14.5, 14.875, 0.0625, pitch_up=1.0, decay=0.97))
+    hook.post.insert(0, lambda x: fx.stutter(x, 0.0, 14.5, 14.875, 0.0625, pitch_up=1.0, decay=0.97, fade=0.003))
     return M
 
 
@@ -506,7 +510,7 @@ def render(verbose=True):
     master = M.render(irs, {'hall': -1, 'huge': 0, 'plate': -2, 'room': -3})
 
     # macro dynamics (dB)
-    lv = [(0, -3), (2.9, -2), (3.0, -2), (8.9, -2), (9.0, -1), (12.9, -1), (13.0, -1.5), (14.9, 0),
+    lv = [(0, 1.5), (2.9, 1.5), (3.0, -2), (8.9, -2), (9.0, -1), (12.9, -1), (13.0, -1.5), (14.9, 0),
           (15.0, 0.5), (16.0, 0.0), (24.9, 0.0), (25.0, -1.0), (28.9, -0.5), (29.0, 0.5), (37.5, 0.5),
           (38.0, -1.0), (40.9, -1.0), (41.0, 1.0), (45, 1.0)]
     master *= undb(automation(N_TOTAL, lv))[:, None]
