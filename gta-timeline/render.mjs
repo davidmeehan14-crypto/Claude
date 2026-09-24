@@ -34,7 +34,7 @@ if (mode === 'sheet') {
   fs.writeFileSync(wav, Buffer.from(await page.evaluate(() => window.__audioWav()), 'base64'));
   console.log('audio done');
   const ff = spawn(FFMPEG, ['-y', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', '-i', wav,
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', out], { stdio: ['pipe', 'ignore', 'inherit'] });
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-maxrate', '9M', '-bufsize', '18M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', out], { stdio: ['pipe', 'ignore', 'inherit'] });
   const N = Math.floor(DUR * fps);
   for (let i = 0; i < N; i++) {
     const buf = Buffer.from(await grab(i / fps), 'base64');

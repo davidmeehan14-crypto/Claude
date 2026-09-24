@@ -1137,7 +1137,7 @@ function overlays(t, sc, lt) {
   const dip = Math.max(1 - inv(0, .35, lt), inv(sc.d - .3, sc.d, lt));
   if (dip > 0 && !(sc.id === 'open' && lt < .35)) rect(0, 0, W, H, '#000', dip);
   // grain
-  ctx.save(); ctx.globalAlpha = .55;
+  ctx.save(); ctx.globalAlpha = EXPORT ? .2 : .55;
   const g = grain[Math.floor(t * 24) % 4];
   const ox = -Math.floor(hash(Math.floor(t * 24)) * 256), oy = -Math.floor(hash(Math.floor(t * 24) + 1) * 256);
   for (let x = ox; x < W; x += 256) for (let y = oy; y < H; y += 256) ctx.drawImage(g, x, y);
