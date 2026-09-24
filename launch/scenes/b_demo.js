@@ -154,9 +154,11 @@
         const x = lerp(gc, W / 2, col), s = sIn * antic * (1 - .92 * col);
         const settle = t > 14.0 ? 0 : Math.sin(t * 2.2 + i) * 2;
         ctx.save(); ctx.globalAlpha = inA * (1 - col * col);
-        const b = blurIn + col * 14; if (b > .3) ctx.filter = `blur(${b.toFixed(1)}px)`;
-        ctx.translate(W / 2 + (x - W / 2) * sIn * antic, cy + settle); ctx.scale(s, s);
-        ctx.fillStyle = C.ink; ctx.fillText(g.s, -g.w / 2, WY - cy); ctx.restore();
+        const b = blurIn + col * 14;
+        ctx.translate(W / 2 + (x - W / 2) * sIn * antic, cy + settle); ctx.scale(s, s); ctx.fillStyle = C.ink;
+        if (b > .5) { const a0 = ctx.globalAlpha; const bb = b / s; [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, -.7]].forEach(([u, v], k) => { ctx.globalAlpha = a0 * (k ? .22 : .35); ctx.fillText(g.s, -g.w / 2 + u * bb, WY - cy + v * bb); }); }
+        else ctx.fillText(g.s, -g.w / 2, WY - cy);
+        ctx.restore();
       });
     }
     // ── gold ring glyph ──
@@ -227,10 +229,18 @@
         g.fillStyle = gr; g.fillRect(0, 0, buf.width, buf.height); g.globalCompositeOperation = 'source-over';
       }
       const s = (1.1 - .1 * la) * (1 + 1.3 * push), blur = (1 - la) * 14 + push * 6;
+      const shadow = K.cache('b:logoShadow', buf.width + 120, buf.height + 120, (q) => {
+        q.filter = 'blur(18px)'; K.logo(q, (buf.width + 120) / 2, (buf.height + 120) / 2, lw2, { ink: '#7A3238', gold: '#7A3238' });
+      });
+      let img = buf;
+      if (blur > .5) { // cheap blur: downsample then upscale
+        const f = 1 + blur / 2.2, sb = K.offscreen('b:logoSmall', Math.ceil(buf.width / f), Math.ceil(buf.height / f)), sg = sb.getContext('2d');
+        sg.setTransform(1, 0, 0, 1, 0, 0); sg.clearRect(0, 0, sb.width, sb.height); sg.imageSmoothingQuality = 'high'; sg.drawImage(buf, 0, 0, sb.width, sb.height); img = sb;
+      }
       ctx.save(); ctx.globalAlpha = la * (1 - R(t, 15.78, 16.0, E.inQuad));
-      ctx.shadowColor = 'rgba(120,50,50,.42)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 10;
-      if (blur > .3) ctx.filter = `blur(${blur.toFixed(1)}px)`;
-      ctx.translate(W / 2, 520); ctx.scale(s, s); ctx.drawImage(buf, -buf.width / 2, -buf.height / 2); ctx.restore();
+      ctx.translate(W / 2, 520); ctx.scale(s, s); ctx.imageSmoothingQuality = 'high';
+      ctx.save(); ctx.globalAlpha *= .4; ctx.drawImage(shadow, -shadow.width / 2, -shadow.height / 2 + 10); ctx.restore();
+      ctx.drawImage(img, -buf.width / 2, -buf.height / 2, buf.width, buf.height); ctx.restore();
     }
     ctx.restore();
     // ring + shockwave
@@ -244,7 +254,7 @@
   K.addScene({
     name: 'b_brand', start: 15.0, end: 16.0, draw(ctx, t) {
       const amt = .1 * (1 - R(t, 15.0, 15.35, E.outQuad)) + .22 * E.inQuad(R(t, 15.65, 16.0, E.linear));
-      K.zoomBlur(ctx, amt, g => drawBrand(g, t), W / 2, 520);
+      K.zoomBlur(ctx, amt, g => drawBrand(g, t), W / 2, 520, 4);
     },
   });
 
@@ -500,7 +510,7 @@
     // summary card
     g.save(); rr(g, 20, 140, 350, 176, 26); const gr = g.createLinearGradient(20, 140, 370, 316); gr.addColorStop(0, '#2A1B3D'); gr.addColorStop(1, '#553A78'); g.fillStyle = gr; g.fill(); g.clip();
     K.blob(g, C.gold2, 360, 150, 170, 130, .5); K.blob(g, C.rose, 60, 330, 170, 90, .35); g.restore();
-    const cp = E.outCubic(R(t, 20.85, 21.6, E.linear)), v = Math.round(18400 * cp / 10) * 10;
+    const cp = E.outCubic(R(t, 20.8, 21.6, E.linear)), v = Math.round(18400 * cp / 10) * 10;
     txt(g, 'Spent so far', 40, 176, 13, 600, 'rgba(255,255,255,.7)');
     const aw = txt(g, '£' + v.toLocaleString('en-GB'), 40, 226, 40, 800, '#fff'); txt(g, 'of £24,000', 50 + aw, 226, 15, 500, 'rgba(255,255,255,.7)');
     UI.bar(g, 40, 248, 310, 10, .767 * cp, goldGrad(g, 40, 0, 350, 0), 'rgba(255,255,255,.14)');
@@ -516,13 +526,13 @@
     });
     // rows
     CATS.forEach(([n, a, cap, col], i) => {
-      const ra = R(t, 21.0 + i * .06, 21.4 + i * .06); if (ra <= 0) return; const y = 512 + i * 48;
+      const ra = R(t, 20.7 + i * .05, 21.1 + i * .05); if (ra <= 0) return; const y = 512 + i * 48;
       g.save(); g.globalAlpha *= ra; g.translate(0, (1 - ra) * 16);
       g.beginPath(); g.arc(34, y + 20, 5, 0, TAU); g.fillStyle = col; g.fill();
       const nw = txt(g, n, 48, y + 25, 15, 700);
       if (n === 'Flowers') UI.pill(g, 'New', 56 + nw, y + 20, { size: 10, h: 18, padX: 7, bg: '#FCE3EA', fg: C.rose, weight: 700 });
       txt(g, '£' + a.toLocaleString('en-GB'), 356, y + 25, 15, 800, C.ink, 'right');
-      UI.bar(g, 48, y + 34, 308, 5, a / cap * E.outCubic(R(t, 21.1 + i * .06, 21.7 + i * .06, E.linear)), col, '#EFE8EF');
+      UI.bar(g, 48, y + 34, 308, 5, a / cap * E.outCubic(R(t, 20.95 + i * .06, 21.6 + i * .06, E.linear)), col, '#EFE8EF');
       g.restore();
     });
     UI.tabBar(g, 2);
@@ -744,7 +754,7 @@
     name: 'b_phone', start: 16.0, end: 25.0, draw(ctx, t) {
       if (t < 16.32) {
         const a = 1 - R(t, 16.0, 16.32, E.outCubic);
-        K.zoomBlur(ctx, .2 * a, g => { g.translate(W / 2, H / 2); g.scale(1 + .14 * a, 1 + .14 * a); g.translate(-W / 2, -H / 2); drawPhoneWorld(g, t); });
+        K.zoomBlur(ctx, .2 * a, g => { g.translate(W / 2, H / 2); g.scale(1 + .14 * a, 1 + .14 * a); g.translate(-W / 2, -H / 2); drawPhoneWorld(g, t); }, W / 2, H / 2, 4);
         K.fade(ctx, .7 * a * a, '#FFF6EC');
       } else if (t >= OUT_T) {
         const p = E.inCubic(R(t, OUT_T, 25.0, E.linear)), ps = phoneState(t), [tx, ty] = mapPt(ps, TABLES[5].x, TABLES[5].y - 60);

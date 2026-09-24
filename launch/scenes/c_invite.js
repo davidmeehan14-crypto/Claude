@@ -386,10 +386,12 @@
     kg.globalCompositeOperation = 'source-over';
     ctx.drawImage(mask, 0, 0);
     // warm light + vignette
-    ctx.save(); ctx.globalCompositeOperation = 'soft-light'; K.blob(ctx, '#FFE9C7', 500, 200, 1100, 800, 0.6); ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation = 'screen'; K.blob(ctx, '#FFE9C7', 500, 200, 1100, 800, 0.22); ctx.restore();
     const vg = ctx.createRadialGradient(960, 540, 500, 960, 540, 1250); vg.addColorStop(0, 'rgba(60,35,20,0)'); vg.addColorStop(1, 'rgba(60,35,20,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     drawScanner(ctx, t, c);
   }
+  let _freeze = null;
+  function scanFreeze() { if (_freeze) return _freeze; const b = scanBuffer(SC.sheet); _freeze = K.canvas(W, H); _freeze.getContext('2d').drawImage(b, 0, 0); return _freeze; }
   function scanBuffer(t) {
     const b = K.offscreen('c:scanbuf'), g = b.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.filter = 'none';
     drawScanWorld(g, t); return b;
@@ -498,7 +500,7 @@
     if (t < SC.sheet + 0.32) {
       const L = phoneLayout(t), k = L.h / 880, m = lerp(1, 0.8, L.p);
       g.fillStyle = '#000'; g.fillRect(0, 0, 390, 844);
-      g.save(); g.translate(195 + (960 - L.x) / k, 422 + (540 - L.y) / k); g.scale(m / k, m / k); g.drawImage(t < SC.sheet ? K.offscreen('c:scanbuf') : scanBuffer(t), -960, -540); g.restore();
+      g.save(); g.translate(195 + (960 - L.x) / k, 422 + (540 - L.y) / k); g.scale(m / k, m / k); if (t >= SC.sheet) g.drawImage(scanFreeze(), -960, -540); g.restore();
       K.UI.statusBar(g, true);
       const dim = clamp((t - SC.sheet) / 0.3); if (dim > 0) { g.fillStyle = `rgba(20,10,30,${0.45 * dim})`; g.fillRect(0, 0, 390, 844); }
     }
@@ -511,7 +513,7 @@
   function drawCounter(ctx, t, ex) {
     const a = t - SC.counterIn; if (a < 0 || ex >= 1) return;
     const s = 0.55 + 0.45 * sp(a, 2.4, 0.5), x = 1300 + ex * 420, y = 330, w = 400, h = 250;
-    ctx.save(); ctx.globalAlpha *= clamp(a / 0.12) * (1 - ex); if (ex > 0) ctx.filter = `blur(${(ex * 16).toFixed(1)}px)`;
+    ctx.save(); ctx.globalAlpha *= clamp(a / 0.12) * (1 - ex);
     ctx.translate(x, y + h / 2); ctx.scale(s, s); ctx.translate(-x, -(y + h / 2));
     K.glass(ctx, x, y, w, h, 34, { fill: 'rgba(255,255,255,.82)' });
     ctx.beginPath(); ctx.arc(x + 50, y + 50, 22, 0, TAU); ctx.fillStyle = '#FBE3E8'; ctx.fill(); K.icon(ctx, 'envelope', x + 50, y + 50, 24, C.rose, 2);
@@ -520,8 +522,8 @@
     K.font(ctx, 112, 800, F.sans); const d8 = ctx.measureText('8').width;
     ctx.save(); ctx.beginPath(); ctx.rect(x + 20, y + 80, 260, 116); ctx.clip();
     K.UI.text(ctx, '8', x + 32, y + 180, 112, 800, C.ink);
-    if (p < 1) { ctx.save(); ctx.globalAlpha *= 1 - p; if (p > 0) ctx.filter = `blur(${(p * 8).toFixed(1)}px)`; K.UI.text(ctx, '7', x + 32 + d8, y + 180 - p * 110, 112, 800, C.ink); ctx.restore(); }
-    if (p > 0) { ctx.save(); ctx.globalAlpha *= p; if (p < 1) ctx.filter = `blur(${((1 - p) * 8).toFixed(1)}px)`; K.UI.text(ctx, '8', x + 32 + d8, y + 180 + (1 - p) * 110, 112, 800, C.ink); ctx.restore(); }
+    if (p < 1) { ctx.save(); ctx.globalAlpha *= 1 - p; K.UI.text(ctx, '7', x + 32 + d8, y + 180 - p * 110, 112, 800, C.ink); ctx.restore(); }
+    if (p > 0) { ctx.save(); ctx.globalAlpha *= p; K.UI.text(ctx, '8', x + 32 + d8, y + 180 + (1 - p) * 110, 112, 800, C.ink); ctx.restore(); }
     ctx.restore();
     const pa = t - (SC.tick + 0.05);
     if (pa > 0) { ctx.save(); const ps = sp(pa, 2.8, 0.4); ctx.translate(x + 32 + d8 * 2 + 44, y + 142); ctx.scale(ps, ps); K.UI.pill(ctx, '+1', 0, 0, { align: 'center', bg: '#DDF3E6', fg: '#2F7A55', size: 20, padX: 14 }); ctx.restore(); }
@@ -563,12 +565,13 @@
       } else ctx.drawImage(b, 0, 0);
       return;
     }
-    const L = phoneLayout(t), mb = t < SC.pullEnd ? Math.sin(Math.PI * clamp((t - SC.pull) / (SC.pullEnd - SC.pull))) * 0.05 : 0;
+    const L = phoneLayout(t);
     const ex = ease.inCubic(clamp((t - 32.75) / 0.3));
     const world = g => {
-      K.bgMesh(g, t, { blobs: MESH() });
+      const huge = L.h / 880 * 390 > 1990;
+      if (!huge) K.bgMesh(g, t, { blobs: MESH() });
       drawObjs(g, t);
-      K.phone(g, { x: L.x, y: L.y, h: L.h }, sg => drawScreen2(sg, t), 'c');
+      if (!huge) K.phone(g, { x: L.x, y: L.y, h: L.h, shadow: L.h < 2000 }, sg => drawScreen2(sg, t), 'c');
       if (t < SC.sheet) { // full-res camera feed over the (low-res) phone buffer while the phone is huge
         const k = L.h / 880, sW = 390 * k, sH = 840 * k, m = lerp(1, 0.8, L.p);
         g.save(); K.rr(g, L.x - sW / 2, L.y - sH / 2, sW, sH, 46 * k); g.clip();
@@ -580,7 +583,7 @@
       const ts = touchState(t, L);
       if (ts) K.touch(g, ts.x, ts.y, ts.press, { alpha: ts.a, ripple: ts.ripple });
     };
-    if (mb > 0.002) K.zoomBlur(ctx, mb, world); else world(ctx);
+    world(ctx);
   }
   function touchState(t, L) {
     if (t < SC.touchIn || t > 32.4) return null;
@@ -599,9 +602,9 @@
     const a = t - b.t; if (a <= 0) return;
     const [fx, fy] = K.float(t, b.x * 0.01, 9, 0.55), x = b.x + fx, y = b.y + fy;
     K.font(ctx, 25, 600, F.sans); const tw = ctx.measureText(b.text).width, h = 80, w = 16 + 52 + 16 + tw + 30;
-    const s = 0.35 + 0.65 * sp(a, 2.3, 0.42), al = clamp(a / 0.12), bl = (1 - clamp(a / 0.2)) * 8;
+    const s = 0.3 + 0.7 * sp(a, 2.3, 0.42), al = clamp(a / 0.1);
     const ax = x - b.side * 0 + (b.side < 0 ? w / 2 - 30 : -w / 2 + 30), ay = y + h / 2; // tail anchor
-    ctx.save(); ctx.globalAlpha *= al; if (bl > 0.3) ctx.filter = `blur(${bl.toFixed(1)}px)`;
+    ctx.save(); ctx.globalAlpha *= al;
     ctx.translate(ax, ay); ctx.scale(s, s); ctx.translate(-ax, -ay);
     // tail dots toward the phone
     for (const [dx, dy, r] of [[14, 12, 9], [32, 24, 5]]) { ctx.beginPath(); ctx.arc(x - b.side * (w / 2 + dx - 6), y + dy, r, 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fill(); }
