@@ -139,6 +139,15 @@
       }
     }
   }
+  const SPR_RES = 2, SPRITES = new Map();
+  function headSprite(f, R, lw, v) {
+    const key = f.seed + ':' + v + ':' + Math.round(R * 10);
+    let c = SPRITES.get(key); if (c) return c;
+    const sz = Math.ceil(R * 2.8 * SPR_RES); c = F.canvas(sz, sz);
+    const g = c.getContext('2d'); g.translate(sz / 2, sz / 2); g.scale(SPR_RES, SPR_RES);
+    flowerHead(g, f, R, 10, v / 12 + .001, lw);
+    SPRITES.set(key, c); return c;
+  }
   function drawFlower(g, f, x, y, sc, t) {
     const dt = t - f.tb; if (dt <= 0) return;
     const R = 40 * sc, lw = Math.max(1.5, 3.3 * sc);
@@ -155,7 +164,10 @@
       for (let i = 0; i < 3; i++) leafShape(g, x, y, 34 * sc * lk, f.seed + i * 2.1, lw * .8);
     }
     g.save(); g.translate(hx, hy); g.rotate((f.lean || 0) * .6 + sway * .01 + jiggle(dt - .1, 2.5, 4) * .1);
-    flowerHead(g, f, R, dt, t, lw);
+    if (dt > 1.4) { // settled: use a cached sprite (2 boil variants)
+      const v = F.boil(t) % 2, spr = headSprite(f, R, lw, v);
+      g.drawImage(spr, -spr.width / 2 / SPR_RES, -spr.height / 2 / SPR_RES, spr.width / SPR_RES, spr.height / SPR_RES);
+    } else flowerHead(g, f, R, dt, t, lw);
     g.restore();
     if (f.main || f.stemless) { // bloom sparkle
       const sp = invLerp(.06, .42, dt);
@@ -181,27 +193,34 @@
   }
 
   // ═════════════════════════════ BACKGROUND ═════════════════════════════
-  function background(g, t) {
-    // warm golden-hour sky over the paper (world space, drawn big so camera moves are safe)
+  const HILLS = [];
+  for (let i = 0; i <= 24; i++) { const x = -200 + i * 97; HILLS.push([x, VPY - 18 - 34 * (.5 + .5 * Math.sin(i * .9 + 1)) - 20 * (.5 + .5 * Math.sin(i * .37))]); }
+  let BG = null;
+  function bgStatic() { // paper + golden-hour sky + sun + rays + ground, baked once (world coords == frame at zoom 1)
+    if (BG) return BG;
+    const c = F.canvas(W, H), g = c.getContext('2d'), t = 46;
+    F.paper(g);
     const sky = g.createLinearGradient(0, -200, 0, VPY + 40);
     sky.addColorStop(0, 'rgba(255,190,140,.55)'); sky.addColorStop(.6, 'rgba(255,214,160,.35)'); sky.addColorStop(1, 'rgba(255,236,200,.15)');
     g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = sky; g.fillRect(-400, -400, W + 800, VPY + 440); g.restore();
-    // sun glow behind the arch
     g.save(); g.globalCompositeOperation = 'lighter';
     const sg = g.createRadialGradient(960, 360, 20, 960, 360, 620);
     sg.addColorStop(0, 'rgba(255,220,150,.55)'); sg.addColorStop(.35, 'rgba(255,196,110,.22)'); sg.addColorStop(1, 'rgba(255,190,110,0)');
     g.fillStyle = sg; g.fillRect(340, -260, 1240, 1240);
-    // slow god rays
     g.globalAlpha = .07; g.fillStyle = '#FFE2A8';
     for (let i = 0; i < 10; i++) {
-      const a = -Math.PI / 2 + (i - 4.5) * .3 + Math.sin(t * .4 + i) * .03 + (t - 46) * .02, w = .05 + hash(i) * .05;
+      const a = -Math.PI / 2 + (i - 4.5) * .3 + Math.sin(t * .4 + i) * .03, w = .05 + hash(i) * .05;
       g.beginPath(); g.moveTo(960, 360); g.lineTo(960 + Math.cos(a - w) * 1500, 360 + Math.sin(a - w) * 1500); g.lineTo(960 + Math.cos(a + w) * 1500, 360 + Math.sin(a + w) * 1500); g.fill();
     }
     g.restore();
-    // distant hills
-    const hills = [];
-    for (let i = 0; i <= 24; i++) { const x = -200 + i * 97; hills.push([x, VPY - 18 - 34 * (.5 + .5 * Math.sin(i * .9 + 1)) - 20 * (.5 + .5 * Math.sin(i * .37))]); }
-    g.save(); F.smoothOpen(g, hills); g.lineTo(2200, VPY + 20); g.lineTo(-300, VPY + 20); g.closePath(); g.fillStyle = 'rgba(242,206,160,.7)'; g.fill(); g.restore();
+    g.save(); F.smoothOpen(g, HILLS); g.lineTo(2200, VPY + 20); g.lineTo(-300, VPY + 20); g.closePath(); g.fillStyle = 'rgba(242,206,160,.7)'; g.fill(); g.restore();
+    g.save(); g.fillStyle = 'rgba(236,220,190,.55)'; g.fillRect(-400, VPY + 10, W + 800, H + 400); g.restore();
+    g.save(); g.globalCompositeOperation = 'soft-light'; g.fillStyle = 'rgba(255,190,110,.35)'; g.fillRect(0, 0, W, H); g.restore();
+    return (BG = c);
+  }
+  function background(g, t) {
+    g.drawImage(bgStatic(), 0, 0);
+    const hills = HILLS;
     const hp = ease.outCubic(invLerp(46.0, 46.6, t));
     if (hp > 0) F.inkLine(g, F.partialPolyline(hills, hp), { t, seed: 5, lw: 3, stroke: 'rgba(22,22,29,.55)' });
     // far lollipop trees
@@ -213,8 +232,6 @@
       F.inkShape(g, F.circlePts(0, -r * 1.9, r, 14), { fill: [P.blush, P.lilac, P.mint][i % 3], t, seed: 70 + i, lw: 3, amp: .8 });
       g.restore();
     }
-    // ground
-    g.save(); g.fillStyle = 'rgba(236,220,190,.55)'; g.fillRect(-400, VPY + 10, W + 800, H + 400); g.restore();
     const hz = ease.inOutCubic(invLerp(46.0, 46.5, t));
     if (hz > 0) F.inkLine(g, [[960 - 1300 * hz, VPY + 12], [960, VPY + 11], [960 + 1300 * hz, VPY + 12]], { t, seed: 3, lw: 3.5 });
     // grass ticks
@@ -534,11 +551,10 @@
     return { zoom: z, x, y, dx, dy };
   }
   function drawWorld(g, t, cam) {
-    F.paper(g);
     g.save();
     F.camera(g, cam);
-    background(g, t);
-    aisle(g, t);
+    let _b = performance.now(); background(g, t); const T2 = window.D_T || (window.D_T = {}); T2.bg = (T2.bg||0) + performance.now() - _b; _b = performance.now();
+    aisle(g, t); T2.aisle = (T2.aisle||0) + performance.now() - _b;
     // depth-sorted items (far → near)
     const items = [];
     for (const b of BUSHES) items.push([b.z, () => drawBush(g, b, xAt(b.off, b.z), yAt(b.z) + 4, 1.2 / b.z, t)]);
@@ -548,16 +564,15 @@
     const bs = biscuitState(t);
     if (t > 46.85) items.push([bs.z, () => F.drawBiscuit(g, bs.s)]);
     items.sort((a, b) => b[0] - a[0]);
-    for (const it of items) { g.save(); it[1](); g.restore(); }
+    const TT = window.D_T || (window.D_T = {}); let _a = performance.now();
+    for (const it of items) { g.save(); it[1](); g.restore(); const n = performance.now(); const k = it[0] === ZA + .01 ? 'arch' : it[0] === ZA - .005 ? 'couple' : 'fl'; TT[k] = (TT[k] || 0) + n - _a; _a = n; }
     // climax FX
     heartWave(g, t, 962, 612);
     petalBurst(g, t, 51.2, 962, 620, 70, 511);
     for (const fw of FW) firework(g, t, fw);
     if (t > 51.2) { F.confetti(g, t, 51.2, { x: 120, y: 1100, angle: -1.05, spread: .7, speed: 1900, n: 90, seed: 21 }); F.confetti(g, t, 51.2, { x: 1800, y: 1100, angle: -2.09, spread: .7, speed: 1900, n: 90, seed: 22 }); }
-    motes(g, t);
+    let _m = performance.now(); motes(g, t); window.D_T.motes = (window.D_T.motes||0) + performance.now() - _m;
     g.restore();
-    // warm grade
-    g.save(); g.globalCompositeOperation = 'soft-light'; g.fillStyle = 'rgba(255,190,110,.35)'; g.fillRect(0, 0, W, H); g.restore();
     F.vignette(g, .22, '120,70,30');
     // kiss flash
     const kf = 1 - invLerp(51.2, 51.42, t);

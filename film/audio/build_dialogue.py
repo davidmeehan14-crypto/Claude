@@ -11,7 +11,7 @@ PAN=dict(dot=-0.22, dash=0.22, narrator=0.0)
 LINES=[
  dict(id='dash_sorry',speaker='dash',text='Oh! Sorry.',start=3.55,budget=0.92,target=0.70,frags=[('Oh! Sorry.',0)],speeds=[1.05,1.12,1.2],level=-20,pitch=0.4),
  dict(id='dot_hi',speaker='dot',text='…Hi.',start=4.55,budget=0.80,target=0.60,frags=[('Hi.',0)],speeds=[0.8,0.85,0.9],level=-25,pitch=-0.3,comp=1.5),
- dict(id='dash_marry',speaker='dash',text='Marry me?',start=12.75,budget=0.66,target=0.62,frags=[('mˈæɹi mˈiː??',0)],phon=True,speeds=[1.1,1.15,1.2],level=-21,rise=True),
+ dict(id='dash_marry',speaker='dash',text='Marry me?',start=12.70,budget=0.70,target=0.62,frags=[('mˈæɹi mˈiː??',0)],phon=True,speeds=[1.1,1.15,1.2],level=-21,rise=True),
  dict(id='dot_yes',speaker='dot',text='YES!',start=13.45,budget=0.50,target=0.45,frags=[('Yes!',0)],speeds=[1.1,1.15,1.2],level=-15.5,pitch=2.0,comp=6),
  dict(id='dot_plan',speaker='dot',text='Wait… we have to plan a wedding.',start=14.90,budget=2.6,target=2.2,frags=[('Wait…',0.38),('we have to plan a wedding.',0)],speeds=[0.9,0.95,1.0],level=-20.5,pitch=-0.3),
  dict(id='dash_gary',speaker='dash',text='Who is Uncle Gary?!',start=19.40,budget=1.5,target=0.95,frags=[('Who is Uncle Gary?!',0)],speeds=[1.1,1.2,1.3],level=-18.5,pitch=1.0,comp=4),

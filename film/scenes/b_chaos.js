@@ -297,7 +297,6 @@
     });
   }
   window.B_CHAOS = { inkBall, BALL };
-  window.B_CHAOS._dbg = () => ({ drawBoard, drawItem, ITEMS, drawTabBar, characters, beats, drawWorld });
 
   // ─────────────────────────── title data ───────────────────────────
   const SPLATS = (function () {
@@ -746,6 +745,17 @@
   }
 
   // ─────────────────────────── freeze + title ───────────────────────────
+  const glyphs = {};
+  function glyph(ch) { // pre-rendered title letter (red offset shadow + ink outline + paper fill)
+    if (glyphs[ch]) return glyphs[ch];
+    const c = document.createElement('canvas'); c.width = 260; c.height = 300; const g = c.getContext('2d');
+    F.font(g, 230, FT.display, 900); g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+    const ox = 120, oy = 230;
+    g.fillStyle = P.red; g.fillText(ch, ox + 9, oy + 9);
+    g.lineWidth = 10; g.strokeStyle = P.ink; g.strokeText(ch, ox, oy);
+    g.fillStyle = P.paper; g.fillText(ch, ox, oy);
+    return (glyphs[ch] = { c, ox, oy });
+  }
   function freezeTitle(ctx, t) {
     const lt = t - 14;
     const gray = getGray(), snap = F.snapshot(13.99);
@@ -763,8 +773,8 @@
         const y0 = k * 120, off = (hash2(b, k) - .5) * 120 * (1 - lt / .1);
         ctx.drawImage(snap, 0, y0, W, 120, off, y0, W, 120);
       }
-    } else ctx.drawImage(snap, 0, 0);
-    ctx.globalAlpha = desat; ctx.drawImage(gray, 0, 0); ctx.globalAlpha = 1;
+    } else if (desat < 1) ctx.drawImage(snap, 0, 0);
+    if (lt >= .1 || desat > 0) { ctx.globalAlpha = desat; ctx.drawImage(gray, 0, 0); ctx.globalAlpha = 1; }
     // darken for the title
     const dk = remap(t, 14.12, 14.3, 0, 1, ease.outCubic);
     ctx.fillStyle = `rgba(40,38,44,${.42 * dk})`; ctx.fillRect(-200, -200, W + 400, H + 400);
@@ -805,11 +815,8 @@
       if (d > 0) { const j = jiggle(d, 5, 9); ssy = 1 - .3 * Math.exp(-d * 18) + j * .08; ssx = 1 + .22 * Math.exp(-d * 18) - j * .06; }
       else { ssy = 1 + .35 * fall; ssx = 1 - .15 * fall; }
       const cx = x + widths[i] / 2, by = 680;
-      ctx.save(); ctx.translate(cx, by + yOff); ctx.scale(ssx, ssy); ctx.textAlign = 'center';
-      ctx.fillStyle = P.red; ctx.fillText(ch, 9, 9);
-      ctx.lineWidth = 10; ctx.strokeStyle = P.ink; ctx.lineJoin = 'round'; ctx.strokeText(ch, 0, 0);
-      ctx.fillStyle = P.paper; ctx.fillText(ch, 0, 0);
-      ctx.restore();
+      const gs = glyph(ch);
+      ctx.save(); ctx.translate(cx, by + yOff); ctx.scale(ssx, ssy); ctx.drawImage(gs.c, -gs.ox, -gs.oy); ctx.restore();
       if (d > 0 && d < .45) { // dust puffs
         const q = d / .45; ctx.save(); ctx.globalAlpha = (1 - q) * .8; ctx.fillStyle = '#D9D3C7';
         for (const sd of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + sd * (20 + q * 60), by + 10 - q * 16, 10 + q * 16, 0, TAU); ctx.fill(); }
