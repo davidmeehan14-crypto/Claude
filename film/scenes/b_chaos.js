@@ -833,11 +833,12 @@
   // ─────────────────────────── subtitle pill ───────────────────────────
   const SUB_Y = H - 92;
   function subPill(ctx, t) {
-    const l = F.lines().find(l => t >= l.start - .05 && t < l.end + .45 && (l.speaker === 'dot' || l.speaker === 'dash'));
+    const l = F.lines().filter(l => t >= l.start - .05 && t < l.end + .45 && (l.speaker === 'dot' || l.speaker === 'dash')).sort((a, b) => b.start - a.start)[0];
     if (!l) return;
     const a = clamp((t - l.start + .05) / .12) * (1 - invLerp(l.end + .2, l.end + .45, t));
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-    F.font(ctx, 46, FT.ui, 800); const tw = ctx.measureText(l.text).width;
+    F.font(ctx, 52, FT.ui, 800); const ws = l.text.split(/\s+/), sp = ctx.measureText(' ').width * 1.3 + 6;
+    const tw = ws.reduce((a, w) => a + ctx.measureText(w).width, 0) + sp * (ws.length - 1);
     F.font(ctx, 20, FT.label, 700); const tag = ctx.measureText(l.speaker === 'dot' ? 'DOT' : 'DASH').width + 26;
     const x0 = W / 2 - tw / 2 - tag - 18 - 26, x1 = W / 2 + tw / 2 + 30;
     ctx.globalAlpha = a;
