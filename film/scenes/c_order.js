@@ -745,7 +745,7 @@
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     let x = -total / 2;
     chars.forEach((ch, i) => {
-      const d = lt + .07 - i * .016, k = spring(d, 4.4, .38);
+      const d = lt + .12 - i * .016, k = spring(d, 4.4, .38);
       if (d <= 0) { x += widths[i]; return; }
       ctx.save();
       // mask: letters rise out of the baseline
