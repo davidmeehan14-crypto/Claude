@@ -652,10 +652,10 @@
     const lt = t - l.start, dur = Math.max(.3, l.end - l.start);
     const words = l.text.split(/\s+/);
     const isN = l.speaker === 'narrator';
-    const size = isN ? 50 : 46;
+    const size = isN ? 58 : 52;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (isN) font(ctx, size, FONT.display, 400, 'italic'); else font(ctx, size, FONT.ui, 800);
-    const space = ctx.measureText(' ').width, widths = words.map(w => ctx.measureText(w).width);
+    const space = ctx.measureText(' ').width * 1.3 + 6, widths = words.map(w => ctx.measureText(w).width);
     const total = widths.reduce((a, b) => a + b, 0) + space * (words.length - 1);
     const cx = pos && pos.x != null ? pos.x : W / 2, cy = pos && pos.y != null ? pos.y : H - 92;
     const out = 1 - invLerp(l.end + .2, l.end + .45, t);

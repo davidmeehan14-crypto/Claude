@@ -5,12 +5,15 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 await page.goto(url); await page.evaluate(() => window.FILM_READY);
 const r = await page.evaluate(() => { const cnv = document.getElementById('c'), ctx = cnv.getContext('2d');
-  const T = (f, n = 20) => { f(); const a = performance.now(); for (let i = 0; i < n; i++) { f(); } ctx.getImageData(0,0,1,1); return +((performance.now() - a) / n).toFixed(1); };
-  const off = FILM.offscreen('xx');
-  return { frame5: T(() => FILM.renderFrame(5.3)), frame10: T(() => FILM.renderFrame(10.3)), paper: T(() => FILM.paper(ctx)), paperTint: T(() => FILM.paper(ctx, {tint:'#DCE3B0', tintAlpha:.4})),
-    drawImg: T(() => ctx.drawImage(off, 0, 0)), grain: T(() => FILM.grain(ctx, 3)), vign: T(() => FILM.vignette(ctx, .3)), scenes: FILM.scenes.map(s => s.name + ':' + s.start + '-' + s.end).join(','),
-    test: T(() => { const s = FILM.scenes.find(s => s.name === 'test'); if (s) s.draw(ctx, 20, 20); }),
-    b20: T(() => { const s = FILM.scenes.find(s => s.name === 'b_chaos'); s.draw(ctx, 20.2, 6.2); }),
-    b24: T(() => { const s = FILM.scenes.find(s => s.name === 'b_chaos'); s.draw(ctx, 24.2, 6.2); }),
-  }; });
+  const T = (f, n = 10) => { ctx.save(); f(); ctx.restore(); const a = performance.now(); for (let i = 0; i < n; i++) { ctx.save(); f(); ctx.restore(); } ctx.getImageData(0,0,1,1); return +((performance.now() - a) / n).toFixed(1); };
+  const D = B_CHAOS._dbg(), B = D.beats(); const sc = FILM.scenes.find(s => s.name === 'b_chaos');
+  const out = {};
+  for (const t of [15.5, 20.2, 24.2, 26.9, 27.7, 28.3, 29.2]) {
+    out['scene' + t] = T(() => sc.draw(ctx, t, 0));
+    out['world' + t] = T(() => D.drawWorld(ctx, t, B, t > 27.5 ? {scrib:true, noPaper:true} : {}));
+    out['board' + t] = T(() => D.drawBoard(ctx, t));
+    out['chars' + t] = T(() => D.characters(ctx, t, B));
+    out['ball' + t] = T(() => B_CHAOS.inkBall(ctx, {t, progress: (t-27.55)/1.9, scale: 3, lwScale: 1.3}));
+  }
+  return out; });
 console.log(r); await browser.close();
