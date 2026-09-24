@@ -241,20 +241,29 @@
     }
     return (_cache.grain = tiles);
   }
+  function grainFrames() { // full-frame pre-tiled grain canvases (built once)
+    if (_cache.grainF) return _cache.grainF;
+    return (_cache.grainF = grainTiles().map(tile => {
+      const c = canvas(W, H), g = c.getContext('2d');
+      g.fillStyle = g.createPattern(tile, 'repeat'); g.fillRect(0, 0, W, H); return c;
+    }));
+  }
   function grain(ctx, t, amount = 0.07) {
-    const tiles = grainTiles(), tile = tiles[boil(t, 24) % tiles.length];
+    const fr = grainFrames(), k = boil(t, 24);
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = amount; ctx.globalCompositeOperation = 'overlay';
-    const pat = ctx.createPattern(tile, 'repeat');
-    const ox = hash(boil(t, 24)) * 256, oy = hash(boil(t, 24) + .5) * 256;
-    ctx.translate(-ox, -oy); ctx.fillStyle = pat; ctx.fillRect(0, 0, W + 256, H + 256);
+    ctx.drawImage(fr[k % fr.length], 0, 0);
     ctx.restore();
   }
   function vignette(ctx, amount = 0.35, color = '22,22,29') {
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const g = ctx.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * 1.1);
-    g.addColorStop(0, `rgba(${color},0)`); g.addColorStop(1, `rgba(${color},${amount})`);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+    const key = 'vig:' + amount + ':' + color;
+    if (!_cache[key]) {
+      const c = canvas(W, H), g = c.getContext('2d');
+      const gr = g.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * 1.1);
+      gr.addColorStop(0, `rgba(${color},0)`); gr.addColorStop(1, `rgba(${color},${amount})`);
+      g.fillStyle = gr; g.fillRect(0, 0, W, H); _cache[key] = c;
+    }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(_cache[key], 0, 0); ctx.restore();
   }
   /** Apply camera: zoom about (cx,cy) focus, then optional rotation (radians) and shake. */
   function camera(ctx, o = {}) {

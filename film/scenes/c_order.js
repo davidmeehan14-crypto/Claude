@@ -96,6 +96,15 @@
   function drawBall(ctx, t, b, boilT) {
     ctx.save();
     ctx.translate(b.x, b.y); ctx.rotate(b.rot); ctx.scale(b.s, b.s);
+    if (window.B_CHAOS && B_CHAOS.inkBall) { // identical ball to B's last frame → seamless cut
+      // cached per 12 fps boil frame (B's ball is ~20 ms to stroke)
+      const key = boilT > 30.05 ? F.boil(boilT) : -1, S = 600, c = F.offscreen('c_ballspr', S, S);
+      if (c._key !== key) {
+        const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, S, S);
+        B_CHAOS.inkBall(g, { x: S / 2, y: S / 2, t: key < 0 ? undefined : boilT }); c._key = key;
+      }
+      ctx.drawImage(c, -S / 2, -S / 2); ctx.restore(); return;
+    }
     ctx.strokeStyle = P.ink; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 4.6;
     for (let k = 0; k < NS; k++) {
       F.smoothOpen(ctx, F.wobble(STRANDS[k], boilT, k * 3.1, 1.3));
@@ -131,7 +140,7 @@
   function drawGuides(ctx, t) {
     ctx.save(); ctx.strokeStyle = P.ink; ctx.lineCap = 'round';
     CARDS.forEach(c => {
-      const a = 1 - invLerp(c.snap + .1, c.snap + .3, t);
+      const a = Math.min(invLerp(33.93, 34.0, t), 1 - invLerp(c.snap + .1, c.snap + .3, t));
       if (a <= 0) return;
       ctx.globalAlpha = a; ctx.lineWidth = 3;
       ctx.strokeRect(c.x, c.y, CW, CH);
@@ -181,19 +190,18 @@
     const c = F.offscreen('c_oldpage');
     if (!c._done) {
       const q = c.getContext('2d'), r = F.rng(99);
-      F.paper(q, { tint: '#DDD3C2', tintAlpha: .55 });
+      F.paper(q);
       q.fillStyle = P.ink;
-      for (let i = 0; i < 90; i++) {
+      for (let i = 0; i < 0; i++) {
         const a = r() * TAU, d = 280 + r() * 700, x = 960 + Math.cos(a) * d * 1.3, y = 540 + Math.sin(a) * d * .8;
         q.globalAlpha = .25 + r() * .5; q.beginPath(); q.arc(x, y, 1.5 + r() * 6, 0, TAU); q.fill();
       }
       q.globalAlpha = .18; q.lineWidth = 3; q.strokeStyle = P.ink;
-      for (let i = 0; i < 14; i++) {
+      for (let i = 0; i < 0; i++) {
         const x = r() * W, y = r() * H; q.beginPath(); q.moveTo(x, y);
         for (let j = 0; j < 6; j++) q.lineTo(x + (r() - .5) * 120, y + (r() - .5) * 90);
         q.stroke();
       }
-      F.vignette(q, .45);
       c._done = true;
     }
     g.drawImage(c, 0, 0);
@@ -834,7 +842,7 @@
     // 32.0 anthem burst
     if (t >= 31.9) {
       const k = invLerp(31.9, 32.1, t) * (1 - invLerp(32.1, 32.9, t));
-      rays(ctx, t, 960, 640, invLerp(31.95, 32.2, t), '255,200,90', 18);
+      rays(ctx, t, 960, 640, invLerp(31.95, 32.2, t) * (1 - invLerp(33.0, 33.4, t)), '255,200,90', 18);
       if (k > 0) { ctx.save(); ctx.globalAlpha = k * .7; ctx.fillStyle = '#FFF6DC'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
     }
     const b = ballState(t);
@@ -964,7 +972,7 @@
       else drawSlams(ctx, t);
       ctx.restore();
     },
-    subtitle(t) { return t > 33.5 && t < 42 ? { x: 960, y: 1040 } : null; },
+    subtitle(t) { return t > 33.6 && t < 42 ? { x: 960, y: 1040 } : null; },
   });
   window.C_ORDER = { _p: { rays, freshPage, oldPage, drawBall, ballState, drawPhone, appScreen, drawCard, CARDS, drawDotPeek, drawDashPeek, glowDot, drawGuides },  drawBall: (ctx, t) => drawBall(ctx, t, { x: BALL.x, y: BALL.y, s: 1, rot: 0 }, t), BALL };
 })();

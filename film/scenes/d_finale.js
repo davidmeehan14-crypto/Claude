@@ -429,7 +429,7 @@
   }
   function biscuitState(t) {
     const p = invLerp(46.9, 49.2, t), pe = ease.outSine(p);
-    const z = lerp(1.12, 2.16, pe), off = lerp(-300, 4, pe), sc = .72 * ZA / z;
+    const z = lerp(1.12, 1.9, pe), off = lerp(-300, 10, pe), sc = .72 * ZA / z;
     const trot = t < 49.2;
     const s = { x: xAt(off, z), y: yAt(z), scale: sc, t, seed: 37, dir: 1, hold: ringBox(t), wag: t * (trot ? 4 : 7) };
     if (trot) { const ph = (t - 46.9) * 3.4; s.walk = ph; s.y -= Math.abs(Math.sin(ph * TAU)) * 16 * sc; s.rot = -.05; }
@@ -494,8 +494,8 @@
     g.save(); g.lineWidth = 2; g.strokeStyle = P.ink;
     for (let i = 0; i < n; i++) {
       const ang = r() * TAU, sp = 500 + r() * 1100, drag = 1.8 + r() * 1.4, k = (1 - Math.exp(-drag * dt)) / drag;
-      const px = x + Math.cos(ang) * sp * k + Math.sin(dt * 3 + i) * 24 * Math.min(1, dt), py = y + Math.sin(ang) * sp * k + 150 * dt * dt;
-      const sz = 9 + r() * 10, rot = r() * TAU + dt * (r() - .5) * 12, flip = Math.cos(dt * (4 + r() * 5) + i), col = cols[i % 6];
+      const px = x + Math.cos(ang) * (sp * k + 70 * clamp(dt / .1)) + Math.sin(dt * 3 + i) * 24 * Math.min(1, dt), py = y + Math.sin(ang) * (sp * k + 70 * clamp(dt / .1)) + 150 * dt * dt;
+      const sz = (9 + r() * 10) * clamp(dt / .18), rot = r() * TAU + dt * (r() - .5) * 12, flip = Math.cos(dt * (4 + r() * 5) + i), col = cols[i % 6];
       g.save(); g.translate(px, py); g.rotate(rot); g.scale(1, .35 + .65 * Math.abs(flip));
       g.beginPath(); g.ellipse(0, 0, sz, sz * .58, 0, 0, TAU); g.fillStyle = col; g.fill(); g.stroke(); g.restore();
     }
@@ -526,9 +526,9 @@
     else if (t < 51.22) {
       const a = ease.inOutCubic(invLerp(49.35, 49.95, t)), z0 = 1.035;
       const drift = lerp(0, -18, ease.inOutSine(invLerp(49.6, 50.1, t))) + lerp(0, 40, ease.inOutSine(invLerp(50.35, 50.8, t))) - 22 * ease.inOutSine(invLerp(50.9, 51.2, t));
-      z = lerp(z0, 1.85, a) + .12 * ease.inOutSine(invLerp(49.95, 51.2, t));
-      x = lerp(960, 952, a) + drift * a; y = lerp(560, 648, a);
-    } else { const a = ease.inOutCubic(invLerp(51.25, 51.85, t)); z = lerp(1.97, 1, a); x = lerp(960, 960, a); y = lerp(648, 540, a); }
+      z = lerp(z0, 2.15, a) + .12 * ease.inOutSine(invLerp(49.95, 51.2, t));
+      x = lerp(960, 956, a) + drift * a; y = lerp(560, 650, a);
+    } else { const a = ease.inOutCubic(invLerp(51.25, 51.85, t)); z = lerp(2.27, 1, a); x = lerp(956, 960, a); y = lerp(650, 540, a); }
     let dx = 0, dy = 0;
     if (t > 51.2 && t < 51.6) { const s = F.shake(t, 10 * (1 - (t - 51.2) / .4), 5); dx = s[0]; dy = s[1]; }
     return { zoom: z, x, y, dx, dy };
@@ -566,7 +566,7 @@
 
   // ═════════════════════════════ BOOK ═════════════════════════════
   const PW = 960, PH = 1080, BM = 24; // page half-width/height, board margin
-  const SNAP_T = [44.2, 40.5, 36.5, 28.5, 25, 21, 15.2, 13.7, 12.8, 10.8, 9, 7, 5.5, 3.3, 1.5];
+  const SNAP_T = [44.2, 40.8, 36.8, 28.5, 25, 21, 15.2, 13.7, 12.8, 10.8, 9, 7, 5.5, 3.4, 2.3];
   const NL = SNAP_T.length;
   const LEAVES = [];
   for (let i = 1; i <= NL; i++) { const u = (i - 1) / (NL - 1); LEAVES.push({ i, s: 52.32 + 1.12 * Math.pow(u, 1.45), d: .15 + .15 * u }); }
@@ -633,15 +633,13 @@
     const circ = () => { g.beginPath(); g.arc(cA[0], cA[1], 62, 0, TAU); };
     const cap = () => rrect(g, capX - capW / 2, capY - capH / 2, capW, capH, capW / 2);
     const gold = paint(my - 90, my + 90);
-    g.lineWidth = 7; g.strokeStyle = gold; cap(); g.stroke();
-    if (!S) { g.save(); g.globalCompositeOperation = 'destination-out'; g.lineWidth = 17; circ(); g.save(); g.beginPath(); g.rect(0, my - 200, W, 190); g.clip(); circ(); g.stroke(); g.restore(); g.restore(); }
-    g.lineWidth = 7; g.strokeStyle = gold; g.save(); g.beginPath(); g.rect(0, my - 200, W, 190); g.clip(); circ(); g.stroke(); g.restore();
-    if (!S) { g.save(); g.globalCompositeOperation = 'destination-out'; g.lineWidth = 17; g.beginPath(); g.rect(0, my - 10, W, 200); g.clip(); cap(); g.stroke(); g.restore(); }
-    g.save(); g.beginPath(); g.rect(0, my - 10, W, 200); g.clip(); g.lineWidth = 7; g.strokeStyle = gold; circ(); g.stroke(); g.restore();
-    g.lineWidth = 7; g.strokeStyle = gold; g.save(); g.beginPath(); g.rect(0, my - 10, W, 200); g.clip(); cap(); g.stroke(); g.restore();
-    // re-stroke circle bottom-right over capsule for the weave, then heart
-    g.save(); g.beginPath(); g.rect(capX - 40, my + 20, 80, 80); g.clip(); if (!S) { g.globalCompositeOperation = 'destination-out'; g.lineWidth = 17; circ(); g.stroke(); g.globalCompositeOperation = 'source-over'; } g.lineWidth = 7; g.strokeStyle = gold; circ(); g.stroke(); g.restore();
-    F.heartPath(g, CCX - 4, my + 4, 34); g.fillStyle = gold; g.fill();
+    const cut = (path, clip) => { if (S) return; g.save(); if (clip) { g.beginPath(); clip(); g.clip(); } g.globalCompositeOperation = 'destination-out'; g.lineWidth = 19; path(); g.stroke(); g.restore(); };
+    const draw = (path, clip) => { g.save(); if (clip) { g.beginPath(); clip(); g.clip(); } g.lineWidth = 7; g.strokeStyle = gold; path(); g.stroke(); g.restore(); };
+    draw(circ);
+    cut(cap); draw(cap);                                   // capsule over circle (top crossing)
+    const lower = () => g.rect(0, my + 14, W, 200);
+    cut(circ, lower); draw(circ, lower);                   // circle over capsule (bottom crossing)
+    F.heartPath(g, cA[0], cA[1] + 2, 40); g.fillStyle = gold; g.fill();
     // THE
     F.font(g, 46, F.FONT.display, 600); g.textAlign = 'center'; g.textBaseline = 'alphabetic';
     g.letterSpacing = '22px';
@@ -812,17 +810,18 @@
     const dt = t - 54; if (dt < 0 || dt > 1) return;
     const r = F.rng(540);
     g.save();
-    for (let i = 0; i < 34; i++) {
+    for (let i = 0; i < 46; i++) {
       // spawn along the left, bottom and top edges of the closed book
       const e = r(), u = r();
       let x, y, vx, vy;
       if (e < .4) { x = -10; y = lerp(-CH / 2, CH / 2, u); vx = -1; vy = (u - .5) * .6; }
       else if (e < .7) { x = lerp(0, CW, u); y = CH / 2 + 10; vx = (u - .5) * .6; vy = 1; }
       else { x = lerp(0, CW, u); y = -CH / 2 - 10; vx = (u - .5) * .6; vy = -1; }
-      const sp = 160 + r() * 260, k = (1 - Math.exp(-4 * dt)) / 4, rad = (18 + r() * 34) * (.6 + dt * 1.6);
-      const a = (1 - dt) * .45 * (1 - invLerp(.6, 1, dt));
-      g.globalAlpha = a; g.fillStyle = r() > .5 ? '#E9DCC4' : '#FFF4DC';
-      g.beginPath(); g.arc(x + vx * sp * k, y + vy * sp * k - dt * 20, rad, 0, TAU); g.fill();
+      const sp = 300 + r() * 520, k = (1 - Math.exp(-5 * dt)) / 5, rad = 3 + r() * 5;
+      const a = .75 * (1 - invLerp(.2, .75, dt)), px = x + vx * sp * k, py = y + vy * sp * k + 40 * dt * dt;
+      if (a <= 0) continue;
+      g.globalAlpha = a; g.fillStyle = r() > .5 ? '#F3E6CC' : '#FFE9B0';
+      g.beginPath(); g.arc(px, py, rad * (1 - dt * .6), 0, TAU); g.fill();
     }
     g.restore();
   }
@@ -904,7 +903,7 @@
     const ir = invLerp(59.5, 59.92, t);
     if (ir > 0) {
       const b = biscuitPop(t, coverTop), cx = b.x + 40, cy = b.headY;
-      const R = lerp(1500, 64, ease.inCubic(ir));
+      const R = lerp(1500, 70, ease.inOutCubic(ir));
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(cx, cy, Math.max(0, R), 0, TAU, true); ctx.fillStyle = '#000'; ctx.fill('evenodd'); ctx.restore();
     }
     const fb = invLerp(59.86, 59.99, t);
@@ -913,11 +912,11 @@
   function biscuitPop(t, coverTop) {
     const dt = t - 58.8;
     const peek = ease.outCubic(invLerp(58.5, 58.68, t)) * (1 - ease.inCubic(invLerp(58.7, 58.8, t)) * .6); // ears peek, dip (anticipation)
-    const k = spring(dt, 2.3, .32);
-    const base = coverTop + lerp(lerp(150, 125, peek), 22, clamp(k, 0, 1.3));
+    const k = spring(dt, 2.3, .5);
+    const base = coverTop + lerp(lerp(165, 140, peek), 4, clamp(k, 0, 1.3));
     const vel = dt > 0 ? jiggle(dt, 2.3, 4) : 0;
     const sy = 1 + .28 * Math.max(0, vel) - .12 * Math.max(0, -vel), sx = 1 / Math.sqrt(sy);
-    return { x: 870, y: base, sy, sx, headY: base - 20 - 62 * sy - 30, k };
+    return { x: 850, y: base, sy, sx, headY: base - 1.2 * (20 + 62 * sy + 30), k };
   }
   function drawPeekers(ctx, t, coverTop, toS) {
     if (t < 58.45) return;
@@ -925,15 +924,15 @@
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, coverTop + 3); ctx.clip();
     // Dot & Dash peek from the corners a beat later
     const dk = spring(t - 58.98, 2.8, .4), hk = spring(t - 59.08, 2.8, .4);
-    if (dk > 0) F.drawDot(ctx, { x: 770, y: coverTop + lerp(170, 58, dk), scale: .72, t, rot: .12, look: [1, -.3], mood: t > 59.2 ? 'joy' : 'happy', blush: .7, mouth: t > 59.2 ? .5 : undefined, legs: false, armL: [-10, 20], armR: [10, 20] });
+    if (dk > 0) F.drawDot(ctx, { x: 770, y: coverTop + lerp(170, 30, dk), scale: .72, t, rot: .12, look: [1, -.3], mood: t > 59.2 ? 'joy' : 'happy', blush: .7, mouth: t > 59.2 ? .5 : undefined, legs: false, armL: [-10, 20], armR: [10, 20] });
     if (hk > 0) F.drawDash(ctx, { x: 1180, y: coverTop + lerp(210, 88, hk), scale: .72, t, rot: -.12, look: [-1, -.2], mood: t > 59.2 ? 'joy' : 'happy', blush: .5, mouth: t > 59.25 ? .5 : undefined, legs: false });
     // Biscuit
     const bark = F.pulse(t, 58.82, 59.2) + .6 * F.pulse(t, 59.22, 59.42);
-    F.drawBiscuit(ctx, { x: b.x, y: b.y, scale: 1.05, sx: b.sx, sy: b.sy, t, dir: 1, bark, tongue: t > 59.45, mood: t > 59.45 ? 'joy' : undefined, earFlop: t > 58.8 ? jiggle(t - 58.84, 3.2, 3) * 1.1 : 0, wag: t * 7, rot: t > 58.8 ? -.08 * jiggle(t - 58.8, 2, 3) : 0 });
+    F.drawBiscuit(ctx, { x: b.x, y: b.y, scale: 1.2, sx: b.sx, sy: b.sy, t, dir: 1, bark, tongue: t > 59.45, mood: t > 59.45 ? 'joy' : undefined, earFlop: t > 58.8 ? jiggle(t - 58.84, 3.2, 3) * 1.1 : 0, wag: t * 7, rot: t > 58.8 ? -.08 * jiggle(t - 58.8, 2, 3) : 0 });
     ctx.restore();
     // paws over the edge
     if (b.k > .75 && t > 58.8) {
-      for (const px of [880, 930]) { ctx.beginPath(); ctx.ellipse(px, coverTop + 4, 15, 10, 0, 0, TAU); ctx.fillStyle = P.gold; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = P.ink; ctx.stroke(); ctx.beginPath(); for (const o of [-5, 0, 5]) { ctx.moveTo(px + o, coverTop + 8); ctx.lineTo(px + o, coverTop + 12); } ctx.lineWidth = 2.5; ctx.stroke(); }
+      for (const px of [872, 928]) { ctx.beginPath(); ctx.ellipse(px, coverTop + 4, 15, 10, 0, 0, TAU); ctx.fillStyle = P.gold; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = P.ink; ctx.stroke(); ctx.beginPath(); for (const o of [-5, 0, 5]) { ctx.moveTo(px + o, coverTop + 8); ctx.lineTo(px + o, coverTop + 12); } ctx.lineWidth = 2.5; ctx.stroke(); }
     }
     // WOOF!
     const wk = spring(t - 58.84, 3, .35);

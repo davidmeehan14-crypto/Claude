@@ -26,7 +26,7 @@ LINES=[
  dict(id='narr_logo',speaker='narrator',text='The Wedding Chapter. Write the next one together.',start=55.30,budget=3.0,target=2.85,frags=[('The Wedding Chapter.',0.22),('Write the next one together.',0)],speeds=[0.95,1.0,1.05],level=-20,reverb=0.10),
 ]
 def db(x): return 10**(x/20)
-def trim(y, thr_db=-42, pre=0.008, post=0.02):
+def trim(y, thr_db=-48, pre=0.015, post=0.03):
     w=int(0.004*SR0); env=np.convolve(np.abs(y),np.ones(w)/w,'same'); thr=env.max()*db(thr_db)
     idx=np.where(env>thr)[0]; return y[max(0,idx[0]-int(pre*SR0)): idx[-1]+int(post*SR0)]
 def fade(y, sr, fi=0.004, fo=0.025):
@@ -51,7 +51,7 @@ def synth(L, sp):
     for txt,pause in L['frags']:
         ph = txt if L.get('phon') else k.tokenizer.phonemize(txt, LANG[L['speaker']])
         if L['speaker']=='narrator': ph=ph.replace('wˈɒn','wˈʌn')
-        y,_=k.create(ph, voice=VOICE[L['speaker']], speed=sp, is_phonemes=True)
+        y,_=k.create(ph, voice=VOICE[L['speaker']], speed=sp, is_phonemes=True, trim=False)
         y=trim(y); parts.append(fade(y,SR0,0.003,0.015)); 
         if pause: parts.append(np.zeros(int(pause*SR0),np.float32))
     return np.concatenate(parts)
@@ -105,7 +105,7 @@ for L in LINES:
         wet=fftconvolve(y,IR)[:len(y)+int(0.5*SR)]; yy=np.zeros(len(wet)); yy[:len(y)]=y
         y=yy+L['reverb']*wet*(np.abs(y).max()/ (np.abs(wet).max()+1e-9)) ; y=fade(y,SR,0.001,0.15); y=y/np.abs(y).max()*db(-3)
     y=y*db(L['level']-actrms(y))                  # level = target active-speech RMS dBFS
-    pk=20*np.log10(np.abs(y).max()); print('  pre-limit peak dB',round(pk,2)); y=limit(y, db(-3.2))
+    pk=20*np.log10(np.abs(y).max()); y=limit(y, db(-3.2))
     p=PAN[L['speaker']]; th=(p+1)*np.pi/4; st=np.stack([y*np.cos(th),y*np.sin(th)],1)
     st=st*(np.abs(y).max()/np.abs(st).max())         # pan law normalised so loudest channel keeps the mono peak
     sf.write(f"{FILM}/audio/lines/{L['id']}.wav", st.astype(np.float32), SR, subtype='PCM_24')

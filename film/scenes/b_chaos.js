@@ -119,7 +119,7 @@
       const ang = Math.atan2(y - 540, x - 960) + (r() - .5) * 1.2;
       out.push({
         i, t: ti, spec, x, y, rot: i === 0 ? -.04 : (r() - .5) * .5, sc: i === 0 ? .9 : .78 + r() * .32 + (ti > 25 ? .12 : 0),
-        pop, fromA: ang, spin: (r() - .5) * 3, front: ti > 24.2, seed: 50 + i * 3.7, scrib: Math.floor(r() * 6), scribT: 27.5 + r() * .5,
+        pop, fromA: ang, spin: (r() - .5) * 3, front: ti > 24.2, onChar: ti > 24.2 && ti < 27.5 && (Math.abs(x - DOTX) < 260 && Math.abs(y - 660) < 200 || Math.abs(x - DASHX) < 240 && Math.abs(y - 640) < 220), seed: 50 + i * 3.7, scrib: Math.floor(r() * 6), scribT: 27.5 + r() * .5,
       });
       placed.push({ x, y, t: ti });
     });
@@ -253,8 +253,8 @@
     const out = [];
     for (let v = 0; v < 6; v++) {
       const r = rng(700 + v), pts = []; let x = -.45, y = -.4 + r() * .1;
-      for (let k = 0; k < 26; k++) { x = (k % 2 ? .45 : -.45) + (r() - .5) * .2; y += .035 + r() * .02; pts.push([x, y]); }
-      for (let k = 0; k < 10; k++) { const a = r() * TAU, rr = .15 + r() * .35; pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
+      for (let k = 0; k < 14; k++) { x = (k % 2 ? .45 : -.45) + (r() - .5) * .2; y += .06 + r() * .03; pts.push([x, y]); }
+      for (let k = 0; k < 6; k++) { const a = r() * TAU, rr = .15 + r() * .35; pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
       out.push(pts);
     }
     return out;
@@ -318,6 +318,17 @@
   }
 
   // ─────────────────────────── helpers ───────────────────────────
+  const vigCache = {};
+  function vig(ctx, amount, color = '22,22,29') { // cached F.vignette (same falloff), alpha-scaled
+    if (amount <= 0) return;
+    let c = vigCache[color];
+    if (!c) {
+      c = vigCache[color] = F.offscreen('b_vig_' + color); const g = c.getContext('2d');
+      const gr = g.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * 1.1);
+      gr.addColorStop(0, `rgba(${color},0)`); gr.addColorStop(1, `rgba(${color},1)`); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = clamp(amount); ctx.drawImage(c, 0, 0); ctx.restore();
+  }
   let grayCache = null;
   function grayFreeze() {
     const snap = F.snapshot(13.99), c = F.offscreen('b_gray'), g = c.getContext('2d');
@@ -444,9 +455,9 @@
       }
     }
     // idle agitation
-    const ag = remap(t, 16, 27, .4, 2.4);
-    x += noise1(t * 3 + it.seed, it.seed) * ag * 3; y += noise1(t * 3 + it.seed, it.seed + 5) * ag * 3;
-    rot += noise1(t * 2 + it.seed, 3) * .02 * ag + (hash2(F.boil(t), it.seed) - .5) * .008;
+    const ag = o.rest ? 0 : remap(t, 16, 27, .4, 2.4);
+    if (ag) x += noise1(t * 3 + it.seed, it.seed) * ag * 3; y += noise1(t * 3 + it.seed, it.seed + 5) * ag * 3;
+    if (ag) rot += noise1(t * 2 + it.seed, 3) * .02 * ag + (hash2(F.boil(t), it.seed) - .5) * .008;
     if (ghost > .05) { // smear trail
       ctx.save(); ctx.globalAlpha = .25;
       for (let g = 1; g <= 3; g++) {
@@ -471,11 +482,6 @@
         ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0 * (sp.bw / Math.max(sp.bw, sp.bh)) * 1.05, Math.sin(a) * r0 * (sp.bh / Math.max(sp.bw, sp.bh)) * 1.5);
         ctx.lineTo(Math.cos(a) * r1 * (sp.bw / Math.max(sp.bw, sp.bh)) * 1.05, Math.sin(a) * r1 * (sp.bh / Math.max(sp.bw, sp.bh)) * 1.5); ctx.stroke();
       }
-    }
-    // scribble over (act-end)
-    if (o.scrib && t > it.scribT) {
-      const p = clamp((t - it.scribT) / .4), pts = SCRIBS[it.scrib].map(q => [q[0] * sp.bw * 1.1, q[1] * sp.bh * 1.25]);
-      strokePts(ctx, F.partialPolyline(F.wobble(pts, t, it.seed, 2), p), 7 / it.sc);
     }
     ctx.restore();
   }
@@ -624,6 +630,32 @@
   }
   function applyCam(ctx, c) { F.camera(ctx, { x: c.x, y: c.y, zoom: c.z, rot: c.r, dx: c.dx, dy: c.dy }); }
 
+  // ─────────────────────────── settled-item layer (perf) ───────────────────────────
+  // Items that have finished landing are baked, in index order, into one big world-space canvas.
+  // Deterministic: contents depend only on how many items have settled at t (rebuilt on backward seeks).
+  const SETTLE = .6, LAY = { x: -280, y: -180, w: 2480, h: 1440, s: 1.4 };
+  const layer = { c: null, n: 0, list: [] };
+  function settledLayer(t) {
+    if (!layer.c) {
+      layer.c = document.createElement('canvas'); layer.c.width = Math.round(LAY.w * LAY.s); layer.c.height = Math.round(LAY.h * LAY.s);
+    }
+    const want = [];
+    for (const it of ITEMS) { if (it.t + SETTLE > t) break; if (!it.onChar) want.push(it.i); }
+    const g = layer.c.getContext('2d');
+    if (want.length < layer.n) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, layer.c.width, layer.c.height); layer.n = 0; }
+    g.setTransform(LAY.s, 0, 0, LAY.s, -LAY.x * LAY.s, -LAY.y * LAY.s);
+    for (let k = layer.n; k < want.length; k++) drawItem(g, ITEMS[want[k]], ITEMS[want[k]].t + 5, { rest: true });
+    layer.n = want.length; layer.list = want;
+    const set = new Set(want);
+    return { c: layer.c, has: i => set.has(i) };
+  }
+  function drawScrib(ctx, it, t) {
+    if (t <= it.scribT) return;
+    const sp = buildSprite(it), p = clamp((t - it.scribT) / .4);
+    const pts = SCRIBS[it.scrib].map(q => { const x = q[0] * sp.bw * 1.1 * it.sc, y = q[1] * sp.bh * 1.25 * it.sc, c = Math.cos(it.rot), sn = Math.sin(it.rot); return [it.x + x * c - y * sn, it.y + x * sn + y * c]; });
+    strokePts(ctx, F.partialPolyline(F.wobble(pts, t, it.seed, 2), p), 7);
+  }
+
   // ─────────────────────────── world ───────────────────────────
   function drawWorld(g, t, B, o = {}) {
     if (!o.noPaper) F.paper(g, { tint: '#DCE3B0', tintAlpha: t < 16 ? .38 : lerp(.28, .5, invLerp(16, 27.5, t)) });
@@ -634,10 +666,13 @@
     F.inkLine(g, [[-600, GROUND + 2], [300, GROUND - 2], [960, GROUND + 3], [1600, GROUND - 1], [2500, GROUND + 2]], { t, seed: 2, lw: 4, amp: 1.2 });
     drawBoard(g, t);
     const n = landedBefore(t + .25);
-    for (let i = 0; i < n; i++) if (!ITEMS[i].front) drawItem(g, ITEMS[i], t, o);
+    const L = settledLayer(t);
+    g.drawImage(L.c, LAY.x, LAY.y, LAY.w, LAY.h);
+    for (let i = 0; i < n; i++) { const it = ITEMS[i]; if (!it.onChar && !L.has(i)) drawItem(g, it, t, o); }
+    if (o.scrib) for (let i = 0; i < n; i++) if (!ITEMS[i].onChar && ITEMS[i].i % 2 === 0) drawScrib(g, ITEMS[i], t);
     characters(g, t, B);
     if (o.scrib) charScrib(g, t);
-    for (let i = 0; i < n; i++) if (ITEMS[i].front) drawItem(g, ITEMS[i], t, o);
+    for (let i = 0; i < n; i++) if (ITEMS[i].onChar) { drawItem(g, ITEMS[i], t, o); if (o.scrib) drawScrib(g, ITEMS[i], t); }
     drawTabBar(g, t);
     g.restore();
   }
@@ -699,7 +734,7 @@
     F.font(ctx, 34, FT.hand, 700); ctx.fillStyle = P.ink; ctx.textAlign = 'center'; ctx.globalAlpha = clamp((lt - .3) * 4);
     ctx.fillText('(the peonies)', 960, 200);
     ctx.restore();
-    F.vignette(ctx, .3);
+    vig(ctx, .3);
   }
 
   // ─────────────────────────── freeze + title ───────────────────────────
@@ -726,7 +761,7 @@
     const dk = remap(t, 14.12, 14.3, 0, 1, ease.outCubic);
     ctx.fillStyle = `rgba(40,38,44,${.42 * dk})`; ctx.fillRect(-200, -200, W + 400, H + 400);
     ctx.restore();
-    F.vignette(ctx, .35 + .35 * dk);
+    vig(ctx, .35 + .35 * dk);
     // flash on scratch
     if (lt < .08) { ctx.fillStyle = `rgba(255,255,255,${.5 * (1 - lt / .08)})`; ctx.fillRect(0, 0, W, H); }
     // big scratch zig-zag
@@ -808,32 +843,29 @@
       }
       if (t >= B.cutA && t < B.cutB) { peony(ctx, t, B); subPill(ctx, t); return; }
 
-      const buf = F.offscreen('b_world'), g = buf.getContext('2d');
-      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.filter = 'none'; g.globalCompositeOperation = 'source-over';
-
       if (t >= 27.5) { // ── scribble apocalypse ──
         const u = t - 27.5;
         const comp = ease.inOutCubic(clamp((t - 28.05) / 1.5));          // 0 → 1 compress
         const Bs = lerp(4.3, 1, comp) * (1 + .03 * Math.sin(t * 17));      // ball stroke scale
         const ws = lerp(1, .2, comp), spin = comp * .9;                    // world scale / spin
         const wa = 1 - clamp((t - 29.0) / .5);
-        F.paper(g);
-        if (wa > 0) {
-          const wb = F.offscreen('b_world2'), g2 = wb.getContext('2d'); g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, W, H);
-          drawWorld(g2, t, B, { scrib: true, noPaper: true });
-          g.save(); g.globalAlpha = wa; g.translate(960, 540); g.rotate(spin); g.scale(ws, ws); g.translate(-960, -540); g.drawImage(wb, 0, 0); g.restore();
-        }
-        const prog = clamp((t - 27.55) / 1.9);
-        inkBall(g, { progress: prog, scale: Bs, t, lwScale: lerp(1.9, 1, comp) });
-        // outer flying strands whipping around
         const [sx, sy] = F.shake(t, lerp(8, 34, clamp(u / 2.2)), 71, 28);
-        ctx.save(); ctx.fillStyle = P.paper; ctx.fillRect(0, 0, W, H);
-        ctx.translate(sx, sy); ctx.drawImage(buf, -40, -40, W + 80, H + 80); ctx.restore();
-        F.vignette(ctx, .25 + .25 * comp, '255,45,85');
+        F.paper(ctx);
+        ctx.save(); ctx.translate(sx, sy);
+        if (wa > 0) {
+          ctx.save(); ctx.globalAlpha = wa;
+          drawWorld(ctx, t, B, { scrib: true, noPaper: true, pre: g => { g.translate(960, 540); g.rotate(spin); g.scale(ws, ws); g.translate(-960, -540); } });
+          ctx.restore();
+        }
+        inkBall(ctx, { progress: clamp((t - 27.55) / 1.9), scale: Bs, t, lwScale: lerp(1.4, 1, comp) });
+        ctx.restore();
+        vig(ctx, .25 + .25 * comp, '255,45,85');
         subPill(ctx, t);
         return;
       }
 
+      const buf = F.offscreen('b_world'), g = buf.getContext('2d');
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.filter = 'none'; g.globalCompositeOperation = 'source-over';
       drawWorld(g, t, B, {});
       // composite with effects
       const c1 = camAt(t, B), c0 = camAt(t - 1 / 60, B);
@@ -842,27 +874,26 @@
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
       if (speed > 10) { // whip-pan motion blur
         ctx.drawImage(buf, 0, 0);
-        const n = 5, dirx = -vx / (Math.abs(vx) + 1e-3);
-        for (let k = 1; k <= n; k++) { ctx.globalAlpha = .28; const o = k / n * Math.min(160, speed * 1.2) * (Math.abs(vx) > Math.abs(vz) ? dirx : 0); const zz = 1 + (Math.abs(vx) > Math.abs(vz) ? 0 : k * .012 * Math.sign(vz)); ctx.drawImage(buf, o + W / 2 * (1 - zz), H / 2 * (1 - zz), W * zz, H * zz); }
+        const n = 3, dirx = -vx / (Math.abs(vx) + 1e-3);
+        for (let k = 1; k <= n; k++) { ctx.globalAlpha = .28; const o = Math.round(k / n * Math.min(160, speed * 1.2) * (Math.abs(vx) > Math.abs(vz) ? dirx : 0)); const zz = 1 + (Math.abs(vx) > Math.abs(vz) ? 0 : k * .012 * Math.sign(vz)); ctx.drawImage(buf, o + W / 2 * (1 - zz), H / 2 * (1 - zz), W * zz, H * zz); }
         ctx.globalAlpha = 1;
       } else ctx.drawImage(buf, 0, 0);
       if (muffle > 0) { // noise muffles: blurred, darkened edges
         const sm = F.offscreen('b_small', 480, 270), sg = sm.getContext('2d');
-        sg.setTransform(1, 0, 0, 1, 0, 0); sg.filter = 'blur(4px)'; sg.drawImage(buf, 0, 0, 480, 270); sg.filter = 'none';
-        const mk = F.offscreen('b_mask'), mg = mk.getContext('2d');
-        mg.setTransform(1, 0, 0, 1, 0, 0); mg.globalCompositeOperation = 'source-over'; mg.clearRect(0, 0, W, H); mg.drawImage(sm, 0, 0, W, H);
-        mg.globalCompositeOperation = 'destination-out';
+        sg.setTransform(1, 0, 0, 1, 0, 0); sg.globalCompositeOperation = 'source-over'; sg.clearRect(0, 0, 480, 270);
+        sg.filter = 'blur(4px)'; sg.drawImage(buf, 0, 0, 480, 270); sg.filter = 'none';
         const cc = camFull(t, B), ddx = (DOTX - cc.x) * cc.z, ddy = (GROUND - 95 - cc.y) * cc.z, fx = 960 + cc.dx + ddx * Math.cos(cc.r) - ddy * Math.sin(cc.r), fy = 540 + cc.dy + ddx * Math.sin(cc.r) + ddy * Math.cos(cc.r);
-        const rg = mg.createRadialGradient(fx, fy, 150 * cc.z, fx, fy, 420 * cc.z); rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
-        mg.fillStyle = rg; mg.fillRect(0, 0, W, H); mg.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = muffle; ctx.drawImage(mk, 0, 0); ctx.globalAlpha = 1;
-        F.vignette(ctx, .75 * muffle);
+        sg.globalCompositeOperation = 'destination-out';
+        const rg = sg.createRadialGradient(fx / 4, fy / 4, 150 * cc.z / 4, fx / 4, fy / 4, 420 * cc.z / 4); rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+        sg.fillStyle = rg; sg.fillRect(0, 0, 480, 270); sg.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = muffle; ctx.drawImage(sm, 0, 0, W, H); ctx.globalAlpha = 1;
+        vig(ctx, .75 * muffle);
       }
       ctx.restore();
       // alarm vignette pulsing on the beat
       if (t >= 16) {
         const ramp = invLerp(16, 27.5, t), bp = Math.exp(-((t * 2) % 1) * 3);
-        F.vignette(ctx, (.08 + .3 * ramp) * (.6 + .4 * bp) * (1 - muffle), '255,45,85');
+        vig(ctx, (.08 + .3 * ramp) * (.6 + .4 * bp) * (1 - muffle), '255,45,85');
       }
       // whip flash frame on cuts
       subPill(ctx, t);
