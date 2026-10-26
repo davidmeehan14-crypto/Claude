@@ -21,6 +21,7 @@
  */
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 // arms: rest | up | limp | wave · thrust: thruster brightness · trail: trail size
@@ -130,7 +131,17 @@ function drawFace(ctx, face, t, { lid = 1, glance = [0, 0] } = {}) {
   ctx.clearRect(0, 0, W, ctx.canvas.height);
   ctx.setTransform(k, 0, 0, -k, W / 2, ctx.canvas.height / 2);
   ctx.lineCap = ctx.lineJoin = 'round';
-  ctx.shadowColor = 'rgba(255,214,160,.9)'; ctx.shadowBlur = W * 0.05;
+  // the panel: deep navy with a soft sheen along the top
+  roundRect(ctx, 0, 0, VISOR.w / 2, VISOR.h / 2, VISOR.r);
+  const pg = ctx.createLinearGradient(0, VISOR.h / 2, 0, -VISOR.h / 2);
+  pg.addColorStop(0, '#1A2544'); pg.addColorStop(0.5, '#0F1830'); pg.addColorStop(1, '#0B1226');
+  ctx.fillStyle = pg; ctx.fill();
+  ctx.save(); ctx.clip();
+  const sheen = ctx.createLinearGradient(0, VISOR.h / 2, 0, VISOR.h / 2 - 0.16);
+  sheen.addColorStop(0, 'rgba(255,255,255,.22)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sheen; ctx.fillRect(-VISOR.w / 2, VISOR.h / 2 - 0.16, VISOR.w, 0.16);
+  ctx.restore();
+  ctx.shadowColor = 'rgba(255,205,140,.95)'; ctx.shadowBlur = W * 0.08;
   ctx.fillStyle = ctx.strokeStyle = EYE;
   ctx.lineWidth = 0.036;
   const [gx, gy] = glance;
@@ -154,7 +165,7 @@ function drawFace(ctx, face, t, { lid = 1, glance = [0, 0] } = {}) {
   };
 
   switch (face) {
-    case 'eyes': pills(); break;
+    case 'eyes': pills(); pills(); break;
     case 'smile': pills(1, 0.8); arc([L[0], L[1] - 0.085], false, 0.045, 0.03); arc([R[0], R[1] - 0.085], false, 0.045, 0.03); break;
     case 'happy': arc(L); arc(R); break;
     case 'wink': pill(L); arc(R); break;
@@ -194,21 +205,15 @@ function drawFace(ctx, face, t, { lid = 1, glance = [0, 0] } = {}) {
 
 // ---------------------------------------------------------------- model parts
 
-function roundedRectShape(w, h, r) {
-  const s = new THREE.Shape();
-  s.moveTo(-w + r, -h);
-  s.lineTo(w - r, -h); s.quadraticCurveTo(w, -h, w, -h + r);
-  s.lineTo(w, h - r); s.quadraticCurveTo(w, h, w - r, h);
-  s.lineTo(-w + r, h); s.quadraticCurveTo(-w, h, -w, h - r);
-  s.lineTo(-w, -h + r); s.quadraticCurveTo(-w, -h, -w + r, -h);
-  return s;
-}
-
 // A soft flame lobe: round at the head end (+y), tapering to a point at -y. Colored root -> tip.
 function lobeGeometry({ len, rad, root, tip }) {
-  const prof = [[0, -len], [0.3 * rad, -0.92 * len], [0.62 * rad, -0.7 * len], [0.88 * rad, -0.36 * len], [rad, 0], [0.9 * rad, 0.45 * rad], [0.55 * rad, 0.8 * rad], [0, 0.95 * rad]]
-    .map(([r, y]) => new THREE.Vector2(r, y));
-  const g = new THREE.LatheGeometry(prof, 24);
+  // a rounded tail end, a gentle taper, then the dome that sits inside the head
+  const rt = 0.52 * rad, prof = [];
+  for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + (i / 6) * (Math.PI / 2); prof.push([rt * Math.cos(a), -len + rt + rt * Math.sin(a)]); }
+  for (let i = 1; i <= 6; i++) { const u = i / 6; prof.push([rt + (rad - rt) * Math.pow(u, 0.7), (-len + rt) + (len - rt) * u]); }
+  prof.push([0.9 * rad, 0.45 * rad], [0.55 * rad, 0.8 * rad], [0, 0.95 * rad]);
+  const prof2 = prof.map(([r, y]) => new THREE.Vector2(r, y));
+  const g = new THREE.LatheGeometry(prof2, 28);
   const pos = g.attributes.position, col = [], c0 = new THREE.Color(root), c1 = new THREE.Color(tip);
   for (let i = 0; i < pos.count; i++) {
     const u = Math.max(0, Math.min(1, (pos.getY(i) + len) / (len + 0.95 * rad)));
@@ -221,13 +226,15 @@ function lobeGeometry({ len, rad, root, tip }) {
 
 // Lobes in trail space: +x forward (toward the head), +y up, +z toward the viewer.
 const LOBES = [
-  { at: [-0.42, -0.02, -0.06], len: 1.15, rad: 0.36, root: '#FFF6EE', tip: '#FF9A6C', pitch: -0.06, yaw: 0.00, ph: 0.0 },
-  { at: [-0.40, 0.20, -0.12], len: 1.0, rad: 0.28, root: '#FFE4D0', tip: '#FF7A4E', pitch: 0.26, yaw: -0.04, ph: 1.3 },
-  { at: [-0.36, -0.22, -0.02], len: 0.95, rad: 0.28, root: '#FFD3BB', tip: '#FF5A36', pitch: -0.34, yaw: 0.05, ph: 2.6 },
-  { at: [-0.34, -0.06, 0.16], len: 0.8, rad: 0.23, root: '#FFEEE2', tip: '#FF8E62', pitch: -0.12, yaw: 0.12, ph: 3.9 },
-  { at: [-0.36, 0.08, -0.28], len: 0.9, rad: 0.25, root: '#FFDEC9', tip: '#FF7448', pitch: 0.05, yaw: -0.12, ph: 5.1 },
-  { at: [-0.58, 0.36, 0.00], len: 0.55, rad: 0.15, root: '#FFB89E', tip: '#FF603C', pitch: 0.4, yaw: 0.0, ph: 0.7 },
-  { at: [-0.60, -0.32, 0.06], len: 0.5, rad: 0.14, root: '#FFAD92', tip: '#FF5432', pitch: -0.45, yaw: 0.0, ph: 4.4 },
+  { at: [-0.42, -0.02, -0.06], len: 1.10, rad: 0.40, root: '#FFF7EF', tip: '#FFA477', pitch: -0.05, yaw: 0.00, ph: 0.0 },
+  { at: [-0.40, 0.21, -0.12], len: 0.92, rad: 0.30, root: '#FFE6D3', tip: '#FF7E52', pitch: 0.24, yaw: -0.04, ph: 1.3 },
+  { at: [-0.36, -0.23, -0.02], len: 0.88, rad: 0.30, root: '#FFD6BE', tip: '#FF5E3A', pitch: -0.32, yaw: 0.05, ph: 2.6 },
+  { at: [-0.34, -0.05, 0.17], len: 0.75, rad: 0.25, root: '#FFF0E5', tip: '#FF9268', pitch: -0.1, yaw: 0.12, ph: 3.9 },
+  { at: [-0.36, 0.09, -0.28], len: 0.84, rad: 0.27, root: '#FFE0CC', tip: '#FF7A4E', pitch: 0.06, yaw: -0.12, ph: 5.1 },
+  { at: [-0.56, 0.36, 0.02], len: 0.53, rad: 0.17, root: '#FFBCA2', tip: '#FF6440', pitch: 0.42, yaw: 0.0, ph: 0.7 },
+  { at: [-0.58, -0.33, 0.07], len: 0.48, rad: 0.16, root: '#FFB096', tip: '#FF5836', pitch: -0.46, yaw: 0.0, ph: 4.4 },
+  { at: [-0.74, 0.10, 0.14], len: 0.44, rad: 0.12, root: '#FFC4AC', tip: '#FF7048', pitch: 0.12, yaw: 0.2, ph: 2.1 },
+  { at: [-0.78, -0.12, -0.16], len: 0.40, rad: 0.11, root: '#FFB89E', tip: '#FF6A44', pitch: -0.18, yaw: -0.2, ph: 3.3 },
 ];
 
 // ---------------------------------------------------------------- element
@@ -345,7 +352,7 @@ export class PaperComet extends HTMLElement {
 
     const ENV = 0.7;
     const shell = new THREE.MeshPhysicalMaterial({ color: '#FFFDFB', roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.18, envMapIntensity: ENV });
-    const visorMat = new THREE.MeshPhysicalMaterial({ color: INK, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: ENV * 1.2 });
+    const darkMat = new THREE.MeshPhysicalMaterial({ color: INK, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.15, envMapIntensity: ENV });
     const coralMat = new THREE.MeshPhysicalMaterial({ color: CORAL, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.15, envMapIntensity: ENV, emissive: '#FF5A3A', emissiveIntensity: 0.12 });
     const lobeMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.6, clearcoat: 0.4, clearcoatRoughness: 0.45, envMapIntensity: ENV * 0.3, transparent: true, opacity: 0.94, emissive: '#FF5A30', emissiveIntensity: 0.3 });
 
@@ -359,31 +366,31 @@ export class PaperComet extends HTMLElement {
     body.castShadow = body.receiveShadow = true;
     head.add(body);
 
-    // visor: a glossy rounded slab set into the front
-    const visor = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedRectShape(VISOR.w / 2 - 0.02, VISOR.h / 2 - 0.02, VISOR.r - 0.02),
-      { depth: 0.22, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.02, bevelSegments: 4, curveSegments: 12 }), visorMat);
-    visor.position.set(0, -0.03, 0.22); visor.castShadow = true;
-    head.add(visor);
-
-    // eyes: a transparent canvas over the visor
-    const faceCanvas = document.createElement('canvas'); faceCanvas.width = 512; faceCanvas.height = Math.round(512 * VISOR.h / VISOR.w);
+    // visor and eyes: one canvas projected onto the front of the head, so the panel follows its curve
+    const faceCanvas = document.createElement('canvas'); faceCanvas.width = 640; faceCanvas.height = Math.round(640 * VISOR.h / VISOR.w);
     const faceCtx = faceCanvas.getContext('2d');
     const faceTex = new THREE.CanvasTexture(faceCanvas);
-    faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.anisotropy = 4;
-    const eyes = new THREE.Mesh(new THREE.PlaneGeometry(VISOR.w, VISOR.h),
-      new THREE.MeshBasicMaterial({ map: faceTex, transparent: true, depthWrite: false }));
-    eyes.position.set(0, -0.03, 0.22 + 0.22 + 0.03 + 0.004);
-    head.add(eyes);
+    faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.anisotropy = 8;
+    body.updateMatrixWorld();
+    const visor = new THREE.Mesh(
+      new DecalGeometry(body, v(0, -0.03, 0.45), new THREE.Euler(0, 0, 0), v(VISOR.w, VISOR.h, 0.7)),
+      new THREE.MeshPhysicalMaterial({ map: faceTex, emissiveMap: faceTex, emissive: '#FFFFFF', emissiveIntensity: 0.9, transparent: true,
+        roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: ENV * 1.3, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }));
+    head.add(visor);
 
     // ears: round discs on each side
     for (const s of [-1, 1]) {
-      const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.13, 32), shell);
-      ear.rotation.z = Math.PI / 2; ear.position.set(s * 0.5, -0.02, 0); ear.castShadow = true;
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.21, 32, 24), shell);
+      ear.scale.set(0.42, 1, 1); ear.position.set(s * 0.5, -0.02, -0.02); ear.castShadow = true;
       head.add(ear);
     }
 
     // antenna: a little coral drop floating above the head
-    const antenna = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.13, 8, 16), coralMat);
+    const antGeo = new THREE.CapsuleGeometry(0.068, 0.13, 8, 20);
+    { const pos = antGeo.attributes.position, col = [], a = new THREE.Color('#FF6A44'), b = new THREE.Color('#FFA585');
+      for (let i = 0; i < pos.count; i++) { const c = a.clone().lerp(b, (pos.getY(i) + 0.13) / 0.26); col.push(c.r, c.g, c.b); }
+      antGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); }
+    const antenna = new THREE.Mesh(antGeo, new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.15, envMapIntensity: ENV, emissive: '#FF5A3A', emissiveIntensity: 0.1 }));
     antenna.position.set(-0.1, 0.62, 0); antenna.rotation.z = -0.55; antenna.castShadow = true;
     head.add(antenna);
 
@@ -398,7 +405,7 @@ export class PaperComet extends HTMLElement {
     });
 
     // thruster: a dark nozzle with a warm glow under it
-    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.08, 24), visorMat);
+    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.08, 24), darkMat);
     nozzle.position.y = -0.42; head.add(nozzle);
     const thrust = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,236,200,1)', 'rgba(255,150,110,.7)', 'rgba(255,120,80,0)'), transparent: true, depthWrite: false, opacity: 0.9 }));
     thrust.position.y = -0.56; thrust.scale.set(0.5, 0.5, 1);
@@ -407,6 +414,7 @@ export class PaperComet extends HTMLElement {
     // trail: soft flame lobes that follow the head with a little lag
     const trail = new THREE.Group();
     view.add(trail);
+    const flameGlow = glowTexture('rgba(255,170,130,.55)', 'rgba(255,140,100,.28)', 'rgba(255,120,80,0)');
     const lobes = LOBES.map(def => {
       const m = new THREE.Mesh(lobeGeometry(def), lobeMat);
       m.castShadow = m.receiveShadow = true;
@@ -414,8 +422,17 @@ export class PaperComet extends HTMLElement {
       const dir = v(1, 0, 0).applyAxisAngle(v(0, 0, 1), def.pitch).applyAxisAngle(v(0, 1, 0), -def.yaw);
       m.quaternion.setFromUnitVectors(v(0, 1, 0), dir);
       trail.add(m);
-      return { m, def, dir };
+      // a soft halo behind each lobe takes the hard edge off the geometry
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameGlow, transparent: true, depthWrite: false, opacity: 0.7 }));
+      trail.add(glow);
+      return { m, def, dir, glow };
     });
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,190,150,.5)', 'rgba(255,150,110,.22)', 'rgba(255,130,90,0)'), transparent: true, depthWrite: false, opacity: 0.6 }));
+    halo.position.set(-0.9, -0.05, -0.2); halo.scale.set(2.4, 1.3, 1);
+    trail.add(halo);
+    const ember = new THREE.PointLight('#FF8E62', 2.2, 3.2, 1.6);
+    ember.position.set(-0.55, -0.12, 0.25);
+    trail.add(ember);
 
     // effects
     const fxGroup = new THREE.Group();
@@ -431,7 +448,7 @@ export class PaperComet extends HTMLElement {
     fxGroup.add(spark, question, zzz);
 
     // embers: little coral drops shed from the trail
-    const emberGeo = new THREE.CapsuleGeometry(0.035, 0.07, 4, 10);
+    const emberGeo = new THREE.CapsuleGeometry(0.03, 0.16, 4, 10);
     const dust = Array.from({ length: 20 }, () => {
       const m = new THREE.Mesh(emberGeo, new THREE.MeshPhysicalMaterial({ color: '#FF8A66', roughness: 0.35, clearcoat: 0.8, transparent: true, emissive: '#FF6A48', emissiveIntensity: 0.2 }));
       m.visible = false; m.rotation.z = Math.PI / 2; view.add(m);
@@ -447,7 +464,7 @@ export class PaperComet extends HTMLElement {
     document.addEventListener('visibilitychange', () => this.#wake());
 
     this.#r = {
-      renderer, scene, camera, view, head, trail, lobes, arms, antenna, thrust, fxGroup, shadow, faceCtx, faceTex,
+      renderer, scene, camera, view, head, trail, lobes, halo, arms, antenna, thrust, fxGroup, shadow, faceCtx, faceTex,
       fxMap: { spark, question, zzz }, dust, dustAcc: 0,
       clock: new THREE.Clock(), io, ro, raf: 0, visible: true, plays: [],
       pose: { x: 0, y: 0, yaw: 0, pitch: 0.12, roll: 0, flap: 1 }, prevHead: v(0.7, 0.3, 0), speed: 0,
@@ -657,16 +674,24 @@ export class PaperComet extends HTMLElement {
     const size = (r.mood.trail ?? 1) * (1 + 0.18 * Math.min(2, P.flap - 1)) * (1 + 0.25 * r.speed);
     r.trailScale += (size - r.trailScale) * (1 - Math.exp(-dt * 5));
     const flutter = still ? 0 : 1;
-    for (const { m, def } of r.lobes) {
+    // screen-space angle of the trail, so the halos stretch along it
+    const fwd = v(1, 0, 0).applyQuaternion(r.trailQ).applyEuler(r.view.rotation);
+    const ang = Math.atan2(fwd.y, fwd.x);
+    for (const { m, def, dir, glow } of r.lobes) {
       const w = 1 + flutter * 0.06 * Math.sin(t * (4 + P.flap) + def.ph);
       const sway = flutter * 0.05 * Math.sin(t * 2.3 + def.ph);
       m.scale.set(1 + sway * 0.5, r.trailScale * w, 1 - sway * 0.5);
       m.position.set(def.at[0] * (0.8 + 0.2 * r.trailScale), def.at[1] + flutter * 0.02 * Math.sin(t * 3.1 + def.ph), def.at[2]);
+      const L = def.len * r.trailScale * w;
+      glow.position.set(m.position.x - dir.x * L * 0.45, m.position.y - dir.y * L * 0.45, def.at[2] - 0.05);
+      glow.scale.set(L * 1.15, def.rad * 2.6, 1);
+      glow.material.rotation = ang + def.pitch;
     }
+    r.halo.scale.set(2.4 * r.trailScale, 1.3, 1); r.halo.material.rotation = ang;
   }
 
   #updateDust(dt, still) {
-    const r = this.#r, rate = still ? 0 : (r.mood.dust ?? 1) * 2.2;
+    const r = this.#r, rate = still ? 0 : (r.mood.dust ?? 1) * 3;
     r.dustAcc += rate * dt;
     const back = v(-1, 0, 0).applyQuaternion(r.trailQ);
     while (r.dustAcc >= 1) {
@@ -676,7 +701,7 @@ export class PaperComet extends HTMLElement {
       const lobe = r.lobes[Math.floor(Math.random() * r.lobes.length)];
       const local = v(lobe.def.at[0], lobe.def.at[1], lobe.def.at[2]).addScaledVector(lobe.dir, -lobe.def.len * r.trailScale * (0.7 + Math.random() * 0.6));
       p.m.position.copy(local.applyQuaternion(r.trailQ).add(r.trailPos));
-      p.vel.copy(back).multiplyScalar(0.5 + Math.random() * 0.5).add(v((Math.random() - 0.5) * 0.3, (Math.random() - 0.4) * 0.3, (Math.random() - 0.5) * 0.3));
+      p.vel.copy(back).multiplyScalar(0.9 + Math.random() * 0.8).add(v((Math.random() - 0.5) * 0.2, (Math.random() - 0.4) * 0.25, (Math.random() - 0.5) * 0.3));
       p.life = p.max = 0.9 + Math.random() * 0.8;
       p.m.quaternion.copy(r.trailQ); p.m.rotateZ(Math.PI / 2);
       p.m.visible = true;
