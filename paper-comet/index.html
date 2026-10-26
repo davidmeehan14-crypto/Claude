@@ -153,8 +153,8 @@ code { font-family: var(--mono); font-size: .88em; }
     <div class="controls">
       <div class="head">
         <span class="eyebrow">Paper Comet · AI bot</span>
-        <h1>A paper comet bot that reacts while the AI works</h1>
-        <p class="lede">The logo's comet, folded into a little robot: a paper head with a glowing screen face, an antenna light that pulses faster the harder it works, a paper ring that orbits while it thinks, and ribbon tails that trail behind every move. Each mood has its own face and body position, and its eyes follow the cursor.</p>
+        <h1>A little comet bot that reacts while the AI works</h1>
+        <p class="lede">A glossy little robot riding a comet trail: a white head with a dark visor and two glowing eyes, ear discs, a floating coral antenna, small arms, a thruster underneath and soft flames that stream behind every move. Each mood has its own eyes, body position and arm pose, and the eyes follow the cursor.</p>
       </div>
       <div class="group">
         <span class="label" id="moods-label">Moods</span>
@@ -201,7 +201,7 @@ code { font-family: var(--mono); font-size: .88em; }
             <tr data-k="idle"><td>Resting in the corner</td><td><code>mood = 'idle'</code></td></tr>
             <tr data-k="hover"><td>Pointer hovers the comet</td><td><code>react('excited', 900)</code></td></tr>
             <tr data-k="open"><td>Ask AI opens</td><td><code>play('loop')</code></td></tr>
-            <tr data-k="thinking"><td>Reading the project (ring orbits, lights cycle)</td><td><code>mood = 'thinking'</code></td></tr>
+            <tr data-k="thinking"><td>Reading the project (circles, lights cycle)</td><td><code>mood = 'thinking'</code></td></tr>
             <tr data-k="talking"><td>Reply is streaming in (voice bars)</td><td><code>mood = 'talking'</code></td></tr>
             <tr data-k="happy"><td>Reply finished</td><td><code>react('happy', 1500)</code></td></tr>
             <tr data-k="sad"><td>Request failed</td><td><code>react('sad', 2500)</code></td></tr>
@@ -268,7 +268,7 @@ onExportDone(() => { comet.mood = 'idle'; comet.play('loop'); });</pre></div>
       </div>
     </div>
     <ul class="notes">
-      <li><code>mood</code> sets a lasting state: a face, a body position and the antenna light's rhythm. <code>react(mood, ms)</code> shows a mood briefly, then returns to the previous one.</li>
+      <li><code>mood</code> sets a lasting state: eyes, body position, arm pose and how hard the trail and thruster work. <code>react(mood, ms)</code> shows a mood briefly, then returns to the previous one.</li>
       <li><code>play(name)</code> runs <code>loop</code>, <code>spin</code>, <code>flip</code>, <code>swoop</code>, <code>dash</code>, <code>jump</code>, <code>wiggle</code> or <code>nod</code> once, on top of the current mood.</li>
       <li>Add <code>rotatable</code> to let people drag it around in 3D, or call <code>rotateTo(yaw, pitch)</code>. Either way it eases back to its resting view.</li>
       <li>The background is transparent, so the comet and its soft shadow sit on the app. Size it with CSS <code>width</code>; 150 to 200px works well in a corner. It stops rendering while off screen or in a background tab, and holds still for people who turn on reduced motion.</li>
