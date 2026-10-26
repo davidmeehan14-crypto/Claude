@@ -205,7 +205,7 @@ if A.flames:
     b.inputs['Specular IOR Level'].default_value = 0.2
     b.inputs['Subsurface Weight'].default_value = 0.12
     b.inputs['Subsurface Radius'].default_value = (0.6, 0.25, 0.1)
-    b.inputs['Emission Strength'].default_value = 1.1
+    b.inputs['Emission Strength'].default_value = 0.75
     # colour ramp along the lobe's local Y: white-hot near the bot, red-orange at the tip
     tc = nt.nodes.new('ShaderNodeTexCoord')
     sep = nt.nodes.new('ShaderNodeSeparateXYZ')
@@ -213,8 +213,8 @@ if A.flames:
     ramp = nt.nodes.new('ShaderNodeValToRGB')
     ramp.color_ramp.elements[0].color = (1.0, 0.95, 0.88, 1)
     ramp.color_ramp.elements[1].color = (1.0, 0.13, 0.05, 1)
-    e = ramp.color_ramp.elements.new(0.08); e.color = (1.0, 0.72, 0.5, 1)
-    e = ramp.color_ramp.elements.new(0.22); e.color = (1.0, 0.5, 0.3, 1)
+    e = ramp.color_ramp.elements.new(0.05); e.color = (1.0, 0.72, 0.5, 1)
+    e = ramp.color_ramp.elements.new(0.16); e.color = (1.0, 0.5, 0.3, 1)
     e = ramp.color_ramp.elements.new(0.6); e.color = (1.0, 0.32, 0.15, 1)
     nt.links.new(tc.outputs['Generated'], sep.inputs[0])
     nt.links.new(sep.outputs['X'], mr.inputs['Value'])
@@ -225,6 +225,9 @@ if A.flames:
 
     flames = link(bpy.data.objects.new('flames', None))
     flames.parent = bot
+    # the cluster's tail axis points behind the head (+Y) and to the left (-X), dipping slightly
+    flames.rotation_euler = Euler((math.radians(-8), math.radians(8), math.radians(-34)), 'XYZ')
+    flames.location = (0.0, 0.0, -0.06)
     # (x offset back, y, z, length, radius, pitch deg)
     LOBES = [
         (0.00, 0.00, -0.08, 1.3, 0.27, 6), (-0.06, -0.16, 0.16, 1.0, 0.22, -18), (-0.04, 0.14, -0.3, 0.95, 0.22, 24),
@@ -233,6 +236,7 @@ if A.flames:
         (-0.85, 0.02, 0.24, 0.3, 0.06, -6), (-0.9, -0.05, -0.3, 0.28, 0.055, 10),
     ]
     GAP = 0.1
+    LOBES = [(bx, y, z, L * 1.3, R, p) for (bx, y, z, L, R, p) in LOBES]
     for i, (bx, y, z, L, R, pitch) in enumerate(LOBES):
         # a teardrop built from a profile: round front, gentle taper, rounded cap at the tail
         cap = 0.42
@@ -267,7 +271,7 @@ if A.flames:
         smooth(o)
     # warm light from the flames onto the bot
     fl = bpy.data.lights.new('flamelight', 'POINT'); fl.energy = 30; fl.color = (1, .55, .35); fl.shadow_soft_size = 0.6
-    flo = link(bpy.data.objects.new('flamelight', fl)); flo.location = (-0.95, -0.25, -0.05); flo.parent = bot
+    flo = link(bpy.data.objects.new('flamelight', fl)); flo.location = (-0.6, 0.75, -0.05); flo.parent = bot
 
 # ---------------------------------------------------------------- pose
 bot.rotation_euler = Euler((math.radians(-8), math.radians(-14), math.radians(14)), 'XYZ')
@@ -275,7 +279,7 @@ bot.rotation_euler = Euler((math.radians(-8), math.radians(-14), math.radians(14
 # ---------------------------------------------------------------- camera + light
 cam = bpy.data.cameras.new('cam'); cam.lens = 70
 co = link(bpy.data.objects.new('cam', cam))
-co.location = (-0.45 if A.flames else 0.0, -6.4, 0.75)
+co.location = (-0.4 if A.flames else 0.0, -6.4, 0.75)
 co.rotation_euler = (math.radians(84), 0, math.radians(2.5))
 sc.camera = co
 cam.dof.use_dof = True; cam.dof.focus_object = head; cam.dof.aperture_fstop = 5.6
