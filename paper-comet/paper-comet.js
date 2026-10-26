@@ -1,5 +1,6 @@
 /*
- * <paper-comet> — the Paper Comet AI mascot: a folded-paper comet with ribbon tails, in real-time 3D.
+ * <paper-comet> — the Paper Comet AI bot: a folded-paper comet with a glowing screen face,
+ * an antenna light and ribbon tails, in real-time 3D.
  *
  * Requires three.js (npm i three, or an import map that resolves "three" and "three/addons/").
  *
@@ -7,7 +8,7 @@
  *   <paper-comet mood="idle" follow-pointer rotatable style="width:200px"></paper-comet>
  *
  *   const comet = document.querySelector('paper-comet');
- *   comet.mood = 'thinking';        // lasting mood: face + body position
+ *   comet.mood = 'thinking';        // lasting mood: face, body position, antenna light
  *   comet.react('happy', 1500);     // temporary mood, then back to the previous one
  *   comet.play('loop');             // one-shot move layered on top of the mood
  *
@@ -15,36 +16,38 @@
  *        sleepy determined starstruck surprised sad launch
  * Plays: loop spin flip swoop dash jump wiggle nod
  *
- * Attributes: mood, follow-pointer (turns to look at the cursor), rotatable (drag to spin it in 3D).
+ * Attributes: mood, follow-pointer (eyes and head follow the cursor), rotatable (drag to spin it in 3D).
  * The canvas is transparent. Rendering pauses off screen. Respects prefers-reduced-motion.
  */
 import * as THREE from 'three';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
+// pulse: antenna light rhythm (0 = dim, 1 = calm breathing, higher = busier) · ring: processing ring orbits the head
 const MOODS = {
-  idle:       { face: 'eyes',      pose: 'cruise' },
-  smile:      { face: 'smile',     pose: 'cruise' },
-  happy:      { face: 'happy',     pose: 'bounce', dust: 2 },
-  wink:       { face: 'wink',      pose: 'cruise' },
-  excited:    { face: 'excited',   pose: 'hop',    dust: 2, fx: 'spark' },
-  thinking:   { face: 'lookup',    pose: 'orbit',  dust: 1.5, fx: 'dots' },
-  talking:    { face: 'talk',      pose: 'cruise' },
-  laughing:   { face: 'laugh',     pose: 'shake',  dust: 1.5 },
-  confused:   { face: 'eyes',      pose: 'tilt',   fx: 'question' },
-  cool:       { face: 'cool',      pose: 'glide' },
-  sleepy:     { face: 'sleep',     pose: 'doze',   dust: 0, fx: 'zzz' },
-  determined: { face: 'brows',     pose: 'charge', dust: 2.5 },
-  starstruck: { face: 'stars',     pose: 'bounce', dust: 3 },
-  surprised:  { face: 'surprised', pose: 'jolt',   fx: 'spark' },
-  sad:        { face: 'sad',       pose: 'droop',  dust: 0 },
-  launch:     { face: 'excited',   pose: 'rocket', dust: 5 },
+  idle:       { face: 'eyes',      pose: 'cruise', pulse: 1 },
+  smile:      { face: 'smile',     pose: 'cruise', pulse: 1 },
+  happy:      { face: 'happy',     pose: 'bounce', pulse: 2, dust: 2 },
+  wink:       { face: 'wink',      pose: 'cruise', pulse: 1.5 },
+  excited:    { face: 'excited',   pose: 'hop',    pulse: 3, dust: 2, fx: 'spark' },
+  thinking:   { face: 'process',   pose: 'orbit',  pulse: 4, dust: 1.5, ring: true },
+  talking:    { face: 'talk',      pose: 'cruise', pulse: 2.5 },
+  laughing:   { face: 'laugh',     pose: 'shake',  pulse: 2.5, dust: 1.5 },
+  confused:   { face: 'eyes',      pose: 'tilt',   pulse: 1.5, fx: 'question' },
+  cool:       { face: 'cool',      pose: 'glide',  pulse: 0.8 },
+  sleepy:     { face: 'sleep',     pose: 'doze',   pulse: 0.25, dust: 0, fx: 'zzz' },
+  determined: { face: 'brows',     pose: 'charge', pulse: 3, dust: 2.5 },
+  starstruck: { face: 'stars',     pose: 'bounce', pulse: 3, dust: 3 },
+  surprised:  { face: 'surprised', pose: 'jolt',   pulse: 3, fx: 'spark' },
+  sad:        { face: 'sad',       pose: 'droop',  pulse: 0.4, dust: 0 },
+  launch:     { face: 'excited',   pose: 'rocket', pulse: 6, dust: 5, ring: true },
 };
 
 const PLAYS = { loop: 1.4, spin: 0.9, flip: 1.3, swoop: 1.2, dash: 0.8, jump: 0.9, wiggle: 0.8, nod: 0.9 };
 
 const INK = '#1B2F5B';
 const ACCENT = '#EE7452';
+const GLOW = '#9ED2FF';
 
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
 const smooth = u => u * u * (3 - 2 * u);
@@ -68,7 +71,7 @@ const POSES = {
   doze:   t => ({ y: -0.1 + 0.04 * Math.sin(t * 1.1), pitch: -0.25 + 0.04 * Math.sin(t * 1.1), roll: 0.12, yaw: -0.1, droop: 1, stiff: 0.35, flap: 0.3 }),
   droop:  t => ({ y: -0.2 + 0.02 * Math.sin(t * 1.4), pitch: -0.55, roll: 0.06, yaw: -0.15, droop: 0.8, stiff: 0.4, flap: 0.35 }),
   charge: t => ({ x: 0.06 * Math.sin(t * 6), y: 0.03 * Math.sin(t * 3), pitch: 0.12, yaw: -0.08, stiff: 1.6, flap: 2.6 }),
-  rocket: t => ({ x: 0.015 * Math.sin(t * 41) - 0.45, y: 0.05 + 0.02 * Math.sin(t * 33), pitch: 1.42, roll: 0.25 * Math.sin(t * 2.2), yaw: -0.25, stiff: 1.8, flap: 3 }),
+  rocket: t => ({ x: 0.015 * Math.sin(t * 41) - 0.45, y: 0.3 + 0.02 * Math.sin(t * 33), pitch: 1.42, roll: 0.25 * Math.sin(t * 2.2), yaw: -0.25, stiff: 1.8, flap: 3 }),
   jolt:   (t, tm) => { const u = Math.min(1, tm / 0.35); return { x: -0.14 * smooth(u), y: 0.14 * Math.sin(Math.PI * Math.min(1, tm / 0.5)) + 0.06, pitch: 0.75 * smooth(u) + 0.3, flap: 2 }; },
 };
 
@@ -103,6 +106,16 @@ function paperTexture() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+function glowTexture(inner = 'rgba(255,255,255,1)', mid = 'rgba(158,210,255,.55)') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, inner); r.addColorStop(0.35, mid); r.addColorStop(1, 'rgba(158,210,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 function textSprite(text, color, size) {
@@ -163,7 +176,7 @@ function buildHead(mat) {
 
 const SEG = 24;
 const TAILS = [
-  { anchor: v(-0.22, 0.24, 0.1),   dir: [0.2, 0.1],  len: 1.75, w: 0.14, root: '#F4E0CF', tip: '#F9EDE2', twist: 0.1,   ph: 0 },
+  { anchor: v(-0.22, 0.24, 0.1),   dir: [0.2, 0.1],    len: 1.75, w: 0.14, root: '#F4E0CF', tip: '#F9EDE2', twist: 0.1,   ph: 0 },
   { anchor: v(-0.32, 0.04, 0.16),  dir: [0.03, 0.14],  len: 1.45, w: 0.15, root: '#F5A887', tip: '#F9CDB7', twist: -0.15, ph: 1.7 },
   { anchor: v(-0.24, -0.22, 0.08), dir: [-0.17, 0.08], len: 1.2,  w: 0.14, root: '#E8663F', tip: '#F2916F', twist: 0.2,   ph: 3.1 },
   { anchor: v(-0.26, 0.10, -0.18), dir: [0.06, -0.16], len: 1.4,  w: 0.13, root: '#EE7A58', tip: '#F6A78A', twist: 0.05,  ph: 4.4 },
@@ -195,94 +208,120 @@ function buildTail(def, mat) {
   return { def, mesh, dir, pts: Array.from({ length: SEG }, () => v(0, 0, 0)), ready: false };
 }
 
-// ---------------------------------------------------------------- face
+// ---------------------------------------------------------------- screen face
+// A navy screen set into a paper bezel on the front of the head. Everything on it is light, so it glows.
 
 const FACE_DIR = v(0.3, 0.08, 1).normalize();
 const FACE_SIZE = 1.0;
-const EYE_UV = [[-0.31, 0.1], [0.31, 0.1]];
+const SCREEN = { w: 0.37, h: 0.25, r: 0.09, cy: 0.02 };   // half sizes
+const EYE = { x: 0.16, y: 0.06, w: 0.05, h: 0.075 };   // half sizes
+const BLINKS = new Set(['eyes', 'smile', 'wink', 'excited', 'talk', 'surprised', 'brows', 'sad', 'cool']);
+const LIVE = new Set(['process', 'talk', 'sleep']);     // faces that animate on their own
 
-const BEADS = {
-  eyes:      { show: [1, 1] },
-  lookup:    { show: [1, 1], dx: 0.05, dy: 0.08 },
-  smile:     { show: [1, 1] },
-  happy:     { show: [0, 0] },
-  wink:      { show: [1, 0] },
-  sleep:     { show: [0, 0] },
-  excited:   { show: [1, 1], sy: 1.08 },
-  talk:      { show: [1, 1] },
-  laugh:     { show: [0, 0] },
-  surprised: { show: [1, 1], sx: 1.25, sy: 1.05 },
-  brows:     { show: [1, 1], sy: 0.8, dy: -0.02 },
-  sad:       { show: [1, 1], sx: 0.9, sy: 0.85, dy: -0.02 },
-  stars:     { show: [1, 1], sx: 1.2, sy: 1.1, stars: true },
-  cool:      { show: [0, 0] },
-};
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x - w + r, y + h);
+  ctx.arcTo(x + w, y + h, x + w, y - h, r); ctx.arcTo(x + w, y - h, x - w, y - h, r);
+  ctx.arcTo(x - w, y - h, x - w, y + h, r); ctx.arcTo(x - w, y + h, x + w, y + h, r);
+  ctx.closePath();
+}
 
-function drawFace(ctx, face, t, eyes) {
+function drawScreen(ctx, face, t, { lid = 1, glance = [0, 0] } = {}) {
   const W = ctx.canvas.width, k = W / FACE_SIZE;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, W, W);
   ctx.setTransform(k, 0, 0, -k, W / 2, W / 2);
   ctx.lineCap = ctx.lineJoin = 'round';
-  ctx.strokeStyle = ctx.fillStyle = INK;
-  ctx.lineWidth = 0.03;
-  const [[nx, ny], [fx, fy]] = eyes;
-  const mx = (nx + fx) / 2, my = ny - 0.17;
+  const { w, h, r, cy } = SCREEN;
 
-  for (const [x, y] of [[nx - 0.06, ny - 0.13], [fx + 0.06, fy - 0.13]]) {
-    const r = ctx.createRadialGradient(x, y, 0, x, y, 0.09);
-    r.addColorStop(0, 'rgba(255,170,160,.75)'); r.addColorStop(1, 'rgba(255,170,160,0)');
-    ctx.fillStyle = r; ctx.beginPath(); ctx.ellipse(x, y, 0.09, 0.055, 0, 0, TAU); ctx.fill();
-  }
-  ctx.fillStyle = INK;
+  // paper bezel, then the screen with a faint top sheen
+  roundRect(ctx, 0, cy, w + 0.03, h + 0.03, r + 0.02); ctx.fillStyle = '#F7E6DA'; ctx.fill();
+  roundRect(ctx, 0, cy, w, h, r);
+  const sg = ctx.createLinearGradient(0, cy + h, 0, cy - h);
+  sg.addColorStop(0, '#24406F'); sg.addColorStop(1, '#122142');
+  ctx.fillStyle = sg; ctx.fill();
+  ctx.save(); ctx.clip();
+  const sheen = ctx.createLinearGradient(0, cy + h, 0, cy + h * 0.2);
+  sheen.addColorStop(0, 'rgba(255,255,255,.14)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sheen; ctx.fillRect(-w, cy, 2 * w, h);
 
-  const arcUp = (x, y) => { ctx.beginPath(); ctx.moveTo(x - 0.065, y - 0.02); ctx.quadraticCurveTo(x, y + 0.085, x + 0.065, y - 0.02); ctx.stroke(); };
-  const arcDown = (x, y) => { ctx.beginPath(); ctx.moveTo(x - 0.065, y + 0.01); ctx.quadraticCurveTo(x, y - 0.07, x + 0.065, y + 0.01); ctx.stroke(); };
-  const line = (x1, y1, x2, y2) => { ctx.lineWidth = 0.034; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.lineWidth = 0.03; };
-  const openMouth = (w, h) => {
-    ctx.beginPath(); ctx.moveTo(mx - w, my + 0.01); ctx.quadraticCurveTo(mx, my + 0.025, mx + w, my + 0.01);
-    ctx.quadraticCurveTo(mx + w * 0.9, my - h, mx, my - h); ctx.quadraticCurveTo(mx - w * 0.9, my - h, mx - w, my + 0.01); ctx.fill();
-    ctx.save(); ctx.clip();
-    ctx.fillStyle = '#FF8E86'; ctx.beginPath(); ctx.ellipse(mx, my - h, w * 0.7, h * 0.55, 0, 0, TAU); ctx.fill();
+  // light elements glow
+  ctx.shadowColor = 'rgba(158,210,255,.95)'; ctx.shadowBlur = W * 0.04;
+  ctx.fillStyle = ctx.strokeStyle = '#DDF1FF';
+  ctx.lineWidth = 0.034;
+  const [gx, gy] = glance;
+  const L = [-EYE.x + gx, EYE.y + gy], Rr = [EYE.x + gx, EYE.y + gy];
+  const mx = gx * 0.5, my = EYE.y - 0.15;
+
+  const oval = ([x, y], sw = 1, sh = 1, tilt = 0) => {
+    ctx.beginPath(); ctx.ellipse(x, y, EYE.w * sw, Math.max(0.006, EYE.h * sh * lid), tilt, 0, TAU); ctx.fill();
+  };
+  const eyes = (sw = 1, sh = 1) => { oval(L, sw, sh, -0.12); oval(Rr, sw, sh, 0.12); };
+  const arc = ([x, y], up = true) => {
+    ctx.lineWidth = 0.04; ctx.beginPath();
+    ctx.moveTo(x - 0.06, y - 0.02 * (up ? 1 : -1)); ctx.quadraticCurveTo(x, y + 0.09 * (up ? 1 : -1), x + 0.06, y - 0.02 * (up ? 1 : -1)); ctx.stroke();
+    ctx.lineWidth = 0.034;
+  };
+  const smile = (ww = 0.045, d = 0.035) => { ctx.beginPath(); ctx.moveTo(mx - ww, my); ctx.quadraticCurveTo(mx, my - d, mx + ww, my); ctx.stroke(); };
+  const openMouth = (ww, hh) => { roundRect(ctx, mx, my - hh * 0.5, ww, hh, Math.min(ww, hh) * 0.6); ctx.fill(); };
+  // eyes with a slanted top edge, cut back to the screen colour
+  const slant = (sign, drop) => {
+    ctx.save(); ctx.shadowBlur = 0; ctx.fillStyle = '#1A3160';
+    for (const [[x, y], s] of [[L, sign], [Rr, -sign]]) {
+      ctx.beginPath(); ctx.moveTo(x - 0.08, y + 0.1 + (s > 0 ? -drop : drop)); ctx.lineTo(x + 0.08, y + 0.1 + (s > 0 ? drop : -drop));
+      ctx.lineTo(x + 0.08, y + 0.14); ctx.lineTo(x - 0.08, y + 0.14); ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
   };
-  const smile = (w = 0.05, d = 0.045) => { ctx.beginPath(); ctx.moveTo(mx - w, my); ctx.quadraticCurveTo(mx, my - d, mx + w, my); ctx.stroke(); };
 
   switch (face) {
-    case 'eyes': case 'lookup': smile(0.035, 0.025); break;
-    case 'smile': smile(); break;
-    case 'happy': arcUp(nx, ny); arcUp(fx, fy); smile(0.06, 0.06); break;
-    case 'wink': arcUp(fx, fy); smile(); break;
-    case 'sleep': arcDown(nx, ny); arcDown(fx, fy); ctx.beginPath(); ctx.ellipse(mx, my - 0.01, 0.018, 0.022, 0, 0, TAU); ctx.fill(); break;
-    case 'excited': openMouth(0.065, 0.085); break;
-    case 'talk': {
-      const open = Math.abs(Math.sin(t * 9) * (0.6 + 0.4 * Math.sin(t * 3.1)));
-      ctx.beginPath(); ctx.ellipse(mx, my - 0.015, 0.042, 0.01 + 0.04 * open, 0, 0, TAU); ctx.fill(); break;
+    case 'eyes': eyes(); smile(0.03, 0.02); break;
+    case 'smile': eyes(); smile(); break;
+    case 'happy': arc(L); arc(Rr); smile(0.055, 0.05); break;
+    case 'wink': oval(L, 1, 1, -0.12); arc(Rr); smile(); break;
+    case 'sleep': {
+      const dim = 0.45 + 0.1 * Math.sin(t * 1.3);
+      ctx.globalAlpha = dim; ctx.lineWidth = 0.04;
+      for (const [x, y] of [L, Rr]) { ctx.beginPath(); ctx.moveTo(x - 0.05, y); ctx.lineTo(x + 0.05, y); ctx.stroke(); }
+      ctx.beginPath(); ctx.ellipse(mx, my, 0.014, 0.018, 0, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1; break;
     }
-    case 'laugh':
-      ctx.beginPath(); ctx.moveTo(nx - 0.055, ny + 0.06); ctx.lineTo(nx + 0.05, ny); ctx.lineTo(nx - 0.055, ny - 0.06); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(fx + 0.055, fy + 0.06); ctx.lineTo(fx - 0.05, fy); ctx.lineTo(fx + 0.055, fy - 0.06); ctx.stroke();
-      openMouth(0.075, 0.1); break;
-    case 'surprised': ctx.beginPath(); ctx.ellipse(mx, my - 0.02, 0.028, 0.036, 0, 0, TAU); ctx.fill(); break;
-    case 'brows':
-      line(nx - 0.085, ny + 0.16, nx + 0.06, ny + 0.11); line(fx + 0.085, fy + 0.16, fx - 0.06, fy + 0.11);
-      ctx.beginPath(); ctx.moveTo(mx - 0.04, my); ctx.lineTo(mx + 0.04, my - 0.005); ctx.stroke(); break;
-    case 'sad':
-      line(nx - 0.08, ny + 0.11, nx + 0.06, ny + 0.155); line(fx + 0.08, fy + 0.11, fx - 0.06, fy + 0.155);
-      ctx.beginPath(); ctx.moveTo(mx - 0.045, my - 0.03); ctx.quadraticCurveTo(mx, my + 0.01, mx + 0.045, my - 0.03); ctx.stroke(); break;
-    case 'stars': smile(0.05, 0.05); break;
-    case 'cool': {
-      const lens = x => { ctx.beginPath(); ctx.moveTo(x - 0.11, ny + 0.055); ctx.lineTo(x + 0.11, ny + 0.055);
-        ctx.quadraticCurveTo(x + 0.11, ny - 0.085, x + 0.02, ny - 0.085); ctx.lineTo(x - 0.03, ny - 0.085);
-        ctx.quadraticCurveTo(x - 0.11, ny - 0.085, x - 0.11, ny + 0.055); ctx.fill(); };
-      lens(nx); lens(fx);
-      ctx.fillRect(nx, ny + 0.025, fx - nx, 0.03);
-      ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 0.016;
-      for (const x of [nx, fx]) { ctx.beginPath(); ctx.moveTo(x - 0.06, ny + 0.03); ctx.lineTo(x - 0.015, ny - 0.045); ctx.stroke(); }
-      ctx.strokeStyle = INK; ctx.lineWidth = 0.03; smile(0.045, 0.03);
+    case 'excited': eyes(1, 1.1); openMouth(0.055, 0.045); break;
+    case 'talk': {
+      eyes();
+      // voice bars
+      for (let i = -2; i <= 2; i++) {
+        const hh = 0.012 + 0.03 * Math.abs(Math.sin(t * 11 + i * 1.3) * Math.sin(t * 3.7 + i));
+        roundRect(ctx, mx + i * 0.03, my, 0.009, hh, 0.009); ctx.fill();
+      }
       break;
     }
+    case 'laugh':
+      ctx.lineWidth = 0.04;
+      for (const [[x, y], s] of [[L, 1], [Rr, -1]]) { ctx.beginPath(); ctx.moveTo(x - 0.05 * s, y + 0.055); ctx.lineTo(x + 0.045 * s, y); ctx.lineTo(x - 0.05 * s, y - 0.055); ctx.stroke(); }
+      openMouth(0.065, 0.055); break;
+    case 'surprised': eyes(1.35, 1.1); ctx.beginPath(); ctx.ellipse(mx, my - 0.01, 0.024, 0.03, 0, 0, TAU); ctx.fill(); break;
+    case 'brows': eyes(1.05, 1); slant(1, 0.045); ctx.beginPath(); ctx.moveTo(mx - 0.035, my); ctx.lineTo(mx + 0.035, my); ctx.stroke(); break;
+    case 'sad': eyes(0.95, 0.95); slant(-1, 0.04); ctx.beginPath(); ctx.moveTo(mx - 0.04, my - 0.02); ctx.quadraticCurveTo(mx, my + 0.015, mx + 0.04, my - 0.02); ctx.stroke(); break;
+    case 'stars':
+      for (const [x, y] of [L, Rr]) {
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + Math.PI / 2, rr = i % 2 ? 0.028 : 0.085; ctx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+        ctx.closePath(); ctx.fill();
+      }
+      smile(0.05, 0.045); break;
+    case 'cool':
+      for (const [x, y] of [L, Rr]) { roundRect(ctx, x, y + 0.01, 0.06, 0.016, 0.016); ctx.fill(); }
+      ctx.beginPath(); ctx.moveTo(mx - 0.02, my); ctx.quadraticCurveTo(mx + 0.03, my - 0.005, mx + 0.05, my + 0.025); ctx.stroke(); break;
+    case 'process':
+      // three lights cycling: the bot is working
+      for (let i = -1; i <= 1; i++) {
+        const b = 0.35 + 0.65 * Math.max(0, Math.sin(t * 5 - i * 1.1));
+        ctx.globalAlpha = b; ctx.beginPath(); ctx.ellipse(i * 0.11 + gx * 0.5, 0.03 + gy * 0.5, 0.032 + 0.012 * b, 0.032 + 0.012 * b, 0, 0, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1; break;
   }
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------- element
@@ -401,6 +440,7 @@ export class PaperComet extends HTMLElement {
     const paper = paperTexture();
     const headMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.82, map: paper, bumpMap: paper, bumpScale: 0.6, envMapIntensity: ENV });
     const tailMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, side: THREE.DoubleSide, map: paper, bumpMap: paper, bumpScale: 0.6, envMapIntensity: ENV });
+    const creamMat = new THREE.MeshStandardMaterial({ color: '#F6E4D6', flatShading: true, roughness: 0.85, map: paper, envMapIntensity: ENV });
 
     // view: the whole comet, spun by dragging. head: moved and turned by body positions.
     const view = new THREE.Group();
@@ -412,92 +452,67 @@ export class PaperComet extends HTMLElement {
     const tails = TAILS.map(def => buildTail(def, tailMat));
     for (const t of tails) view.add(t.mesh);
 
-    // Face frame on the head
-    const fz = FACE_DIR.clone(), fx = v(0, 1, 0).cross(fz).normalize(), fy = fz.clone().cross(fx).normalize();
-    headMesh.updateMatrixWorld();
-    const ray = new THREE.Raycaster();
-    const surface = (u, w) => {
-      const d = fz.clone().addScaledVector(fx, u).addScaledVector(fy, w).normalize();
-      ray.set(d.clone().multiplyScalar(3), d.clone().negate());
-      const hit = ray.intersectObject(headMesh)[0];
-      return hit && { p: hit.point, d };
-    };
-    const center = fz.clone().multiplyScalar(R);
-    const toFace = p => [p.clone().sub(center).dot(fx), p.clone().sub(center).dot(fy)];
-
+    // Screen face: a canvas projected onto the front of the head, lit from within
+    const center = FACE_DIR.clone().multiplyScalar(R);
     const proj = new THREE.Object3D();
-    proj.position.copy(center); proj.lookAt(center.clone().add(fz)); proj.updateMatrixWorld();
-    const faceCanvas = document.createElement('canvas'); faceCanvas.width = faceCanvas.height = 1024;
+    proj.position.copy(center); proj.lookAt(center.clone().add(FACE_DIR)); proj.updateMatrixWorld();
+    headMesh.updateMatrixWorld();
+    const faceCanvas = document.createElement('canvas'); faceCanvas.width = faceCanvas.height = 512;
     const faceCtx = faceCanvas.getContext('2d');
     const faceTex = new THREE.CanvasTexture(faceCanvas);
     faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.anisotropy = 4;
-    const decal = new THREE.Mesh(
+    const screen = new THREE.Mesh(
       new DecalGeometry(headMesh, center, proj.rotation, v(FACE_SIZE, FACE_SIZE, 0.7)),
-      new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.9, envMapIntensity: ENV * 0.4, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }));
-    decal.receiveShadow = true;
-    head.add(decal);
+      new THREE.MeshStandardMaterial({ map: faceTex, emissiveMap: faceTex, emissive: '#FFFFFF', emissiveIntensity: 0.85, transparent: true,
+        roughness: 0.6, metalness: 0, envMapIntensity: 0.12, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }));
+    head.add(screen);
 
-    // Eyes: glossy navy beads with highlights
-    const beadMat = new THREE.MeshPhysicalMaterial({ color: INK, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.12, envMapIntensity: 0.5 });
-    const shineMat = new THREE.MeshBasicMaterial({ color: '#FFFFFF' });
-    const starShape = new THREE.Shape();
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU + Math.PI / 2, rr = i % 2 ? 0.2 : 0.8;
-      starShape[i ? 'lineTo' : 'moveTo'](Math.cos(a) * rr, Math.sin(a) * rr);
-    }
-    const starGeo = new THREE.ShapeGeometry(starShape);
-    const beads = EYE_UV.map(() => {
-      const holder = new THREE.Group();
-      const bead = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), beadMat);
-      bead.castShadow = true;
-      const shine = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), shineMat);
-      shine.position.set(-0.3, 0.4, 0.84); shine.scale.set(1.3, 1.5, 0.5);
-      const shine2 = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), shineMat);
-      shine2.position.set(0.3, -0.38, 0.9);
-      const star = new THREE.Mesh(starGeo, shineMat);
-      star.position.z = 1.02;
-      bead.add(shine, shine2, star);
-      holder.add(bead);
-      head.add(holder);
-      return { holder, bead, shine, shine2, star };
-    });
-    const baseEyes = EYE_UV.map(([u, w]) => toFace(surface(u, w).p));
-    const placeBeads = cfg => {
-      beads.forEach((b, i) => {
-        const [u, w] = EYE_UV[i];
-        const hit = surface(u + (cfg.dx ?? 0), w + (cfg.dy ?? 0));
-        b.holder.visible = !!cfg.show[i] && !!hit;
-        if (!hit) return;
-        const n = hit.d, y = fy.clone().sub(n.clone().multiplyScalar(fy.dot(n))).normalize();
-        const x = y.clone().cross(n);
-        b.holder.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, n));
-        b.holder.position.copy(hit.p).addScaledVector(n, 0.012);
-        b.base = [0.068 * (cfg.sx ?? 1), 0.1 * (cfg.sy ?? 1), 0.045];
-        b.bead.scale.set(...b.base);
-        b.star.visible = !!cfg.stars;
-        b.shine.visible = b.shine2.visible = !cfg.stars;
-      });
-    };
+    // Antenna: a paper stalk with a light on top
+    const antenna = new THREE.Group();
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.024, 0.2, 7), creamMat);
+    stalk.position.y = 0.1; stalk.castShadow = true;
+    const bulbMat = new THREE.MeshStandardMaterial({ color: '#CFE8FF', emissive: GLOW, emissiveIntensity: 1.2, roughness: 0.4, envMapIntensity: ENV });
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), bulbMat);
+    bulb.position.y = 0.22;
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), transparent: true, depthWrite: false, opacity: 0.8 }));
+    halo.position.y = 0.22; halo.scale.setScalar(0.32);
+    antenna.add(stalk, bulb, halo);
+    antenna.position.set(-0.1, R - 0.03, 0.04); antenna.rotation.z = 0.3;
+    head.add(antenna);
+
+    // Engine glow where the tails meet the head
+    const engine = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,255,255,.95)', 'rgba(255,205,170,.5)'), transparent: true, depthWrite: false, opacity: 0.55 }));
+    engine.position.set(-0.36, 0, 0); engine.scale.setScalar(0.5);
+    head.add(engine);
+
+    // Processing ring: a thin paper hoop that orbits the head while it works
+    const ringPivot = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.016, 8, 56), creamMat);
+    ring.rotation.x = 1.25; ring.castShadow = true;
+    ringPivot.add(ring); ringPivot.scale.setScalar(0.001);
+    view.add(ringPivot);
 
     // Effects that follow the head but stay upright
     const fxGroup = new THREE.Group();
     view.add(fxGroup);
     const accentMat = new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.5, envMapIntensity: ENV });
     const spark = new THREE.Group();
-    for (const [x, y, a] of [[0.05, 0.78, 0.25], [0.38, 0.7, -0.5], [0.62, 0.45, -1.1]]) {
+    for (const [x, y, a] of [[0.05, 0.9, 0.25], [0.38, 0.82, -0.5], [0.62, 0.57, -1.1]]) {
       const c = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.15, 4, 10), accentMat);
       c.position.set(x, y, 0.2); c.rotation.z = a; spark.add(c);
     }
-    const dots = new THREE.Group();
-    for (let i = 0; i < 3; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 14), accentMat); s.position.set(-0.05 + i * 0.2, 0.78, 0.2); dots.add(s); }
-    const question = textSprite('?', ACCENT, 0.6); question.position.set(0.5, 0.85, 0.2);
+    const question = textSprite('?', ACCENT, 0.6); question.position.set(0.5, 0.95, 0.2);
     const zzz = new THREE.Group();
     for (let i = 0; i < 3; i++) zzz.add(textSprite('z', INK, 0.3));
-    fxGroup.add(dots, spark, question, zzz);
+    fxGroup.add(spark, question, zzz);
 
-    // Stardust: little paper diamonds shed from the tails
+    // Stardust: paper flecks and light motes shed from the tails
     const dustGeo = new THREE.OctahedronGeometry(0.045, 0);
-    const dustMats = ['#FFF3E6', '#F6B194', '#EE7A58'].map(c => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.8, envMapIntensity: ENV }));
+    const dustMats = [
+      new THREE.MeshStandardMaterial({ color: '#FFF3E6', flatShading: true, roughness: 0.8, envMapIntensity: ENV }),
+      new THREE.MeshStandardMaterial({ color: '#F6B194', flatShading: true, roughness: 0.8, envMapIntensity: ENV }),
+      new THREE.MeshStandardMaterial({ color: '#D9EEFF', emissive: GLOW, emissiveIntensity: 0.7, flatShading: true, roughness: 0.6, envMapIntensity: ENV }),
+    ];
     const dust = Array.from({ length: 22 }, (_, i) => {
       const m = new THREE.Mesh(dustGeo, dustMats[i % 3]);
       m.visible = false; view.add(m);
@@ -513,12 +528,12 @@ export class PaperComet extends HTMLElement {
     document.addEventListener('visibilitychange', () => this.#wake());
 
     this.#r = {
-      renderer, scene, camera, view, head, tails, fxGroup, shadow, faceCtx, faceTex, placeBeads, beads, baseEyes,
-      fxMap: { dots, spark, question, zzz }, dust, dustAcc: 0,
+      renderer, scene, camera, view, head, tails, fxGroup, shadow, faceCtx, faceTex, bulbMat, halo, engine, ringPivot,
+      fxMap: { spark, question, zzz }, dust, dustAcc: 0,
       clock: new THREE.Clock(), io, ro, raf: 0, visible: true, plays: [],
       pose: { x: 0, y: 0, yaw: 0, pitch: 0.42, roll: 0, stiff: 1, droop: 0, flap: 1 },
-      look: { yaw: 0, pitch: 0 }, viewRot: { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 }, viewHold: 0,
-      mood: MOODS.idle, moodT0: 0, face: 'eyes', blinkAt: 2, blinkT: -9, faceDrawnAt: 0, pop: -9,
+      look: { yaw: 0, pitch: 0 }, glance: [0, 0], viewRot: { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 }, viewHold: 0,
+      mood: MOODS.idle, moodT0: 0, face: 'eyes', blinkAt: 2, blinkT: -9, faceKey: '', faceDrawnAt: 0, pop: -9,
     };
   }
 
@@ -539,18 +554,20 @@ export class PaperComet extends HTMLElement {
     const m = MOODS[mood] ?? MOODS.idle;
     const now = r.clock.elapsedTime;
     r.mood = m; r.moodT0 = now; r.face = m.face;
-    r.placeBeads(BEADS[m.face]);
-    this.#drawFace(now);
+    this.#drawFace(now, 1, true);
     for (const [k, g] of Object.entries(r.fxMap)) g.visible = k === m.fx;
     r.pop = now;
     this.#wake();
   }
 
-  #drawFace(t) {
-    const r = this.#r, cfg = BEADS[r.face];
-    const eyes = r.baseEyes.map(([x, y]) => [x + (cfg.dx ?? 0) * 0.45, y + (cfg.dy ?? 0) * 0.45]);
-    drawFace(r.faceCtx, r.face, t, eyes);
+  #drawFace(t, lid, force = false) {
+    const r = this.#r;
+    const key = `${r.face}|${lid.toFixed(2)}|${r.glance[0].toFixed(3)}|${r.glance[1].toFixed(3)}`;
+    const live = LIVE.has(r.face) && t - r.faceDrawnAt > 1 / 30;
+    if (!force && !live && key === r.faceKey) return;
+    drawScreen(r.faceCtx, r.face, t, { lid, glance: r.glance });
     r.faceTex.needsUpdate = true;
+    r.faceKey = key; r.faceDrawnAt = t;
   }
 
   // ------------------------------------------------------------ input
@@ -628,11 +645,13 @@ export class PaperComet extends HTMLElement {
     for (const key of ['x', 'y', 'stiff', 'droop', 'flap']) P[key] += (target[key] - P[key]) * k;
     for (const key of ['yaw', 'pitch', 'roll']) P[key] += wrap(target[key] - P[key]) * k;
 
-    // look toward the pointer (the face is on the +z side)
+    // look toward the pointer: the head turns a little and the eyes glance further
     const pa = this.#pointer.active && !still;
     const lk = 1 - Math.exp(-dt * 5);
-    r.look.yaw += ((pa ? this.#pointer.x * 0.55 : 0) - r.look.yaw) * lk;
-    r.look.pitch += ((pa ? this.#pointer.y * 0.4 : 0) - r.look.pitch) * lk;
+    r.look.yaw += ((pa ? this.#pointer.x * 0.45 : 0) - r.look.yaw) * lk;
+    r.look.pitch += ((pa ? this.#pointer.y * 0.3 : 0) - r.look.pitch) * lk;
+    r.glance[0] += ((pa ? this.#pointer.x * 0.05 : 0) - r.glance[0]) * lk;
+    r.glance[1] += ((pa ? -this.#pointer.y * 0.035 : 0) - r.glance[1]) * lk;
 
     // whole-comet rotation: drag with inertia, or rotateTo(), easing back to rest
     const VR = r.viewRot, dragging = this.#drag?.moved && !this.#drag.done;
@@ -666,23 +685,40 @@ export class PaperComet extends HTMLElement {
     r.shadow.scale.setScalar(Math.max(0.55, 1 - (hw.y - 0.3) * 0.35));
     r.shadow.material.opacity = Math.min(1, Math.max(0.35, 1 - (hw.y - 0.3) * 0.5));
 
-    // blink
-    if (!still && now > r.blinkAt) { r.blinkT = now; r.blinkAt = now + 2.2 + Math.random() * 4; }
+    // screen: blink, glance, live faces
+    if (!still && BLINKS.has(r.face) && now > r.blinkAt) { r.blinkT = now; r.blinkAt = now + 2.2 + Math.random() * 4; }
     const bu = (now - r.blinkT) / 0.16;
     const lid = bu >= 0 && bu < 1 ? 1 - 0.92 * Math.sin(Math.PI * bu) : 1;
-    for (const b of r.beads) if (b.base) b.bead.scale.set(b.base[0], b.base[1] * lid, b.base[2]);
-    if (r.face === 'talk' && !still && now - r.faceDrawnAt > 1 / 30) { this.#drawFace(now); r.faceDrawnAt = now; }
+    this.#drawFace(t, BLINKS.has(r.face) ? lid : 1);
 
-    // effects
-    const { dots, spark, question, zzz } = r.fxMap;
-    // fx sit above the head but don't swing with its circling
+    // antenna light: breathes at the mood's pace, flashes when the mood changes
+    const pulse = r.mood.pulse, flash = Math.max(0, 1 - popU) * 1.2;
+    const breath = still ? 0.6 : (pulse < 0.5 ? 0.25 + 0.1 * Math.sin(t * 1.5) : 0.55 + 0.45 * Math.max(0, Math.sin(t * 1.6 * pulse)));
+    r.bulbMat.emissiveIntensity = 0.5 + 1.6 * breath + flash;
+    r.halo.material.opacity = Math.min(1, 0.25 + 0.6 * breath + flash);
+    r.halo.scale.setScalar(0.22 + 0.2 * breath + 0.15 * flash);
+
+    // engine glow follows how hard the tails are working
+    const drive = Math.min(1, (P.flap - 0.3) / 2.5);
+    r.engine.material.opacity = 0.2 + 0.55 * drive;
+    r.engine.scale.setScalar(0.4 + 0.35 * drive + 0.03 * Math.sin(t * 20));
+
+    // processing ring
+    const RP = r.ringPivot;
+    const ringOn = !!r.mood.ring;
+    RP.position.copy(H.position);
+    RP.scale.setScalar(RP.scale.x + ((ringOn ? 1 : 0.001) - RP.scale.x) * (1 - Math.exp(-dt * 6)));
+    RP.visible = RP.scale.x > 0.01;
+    RP.rotation.y = t * 2.2; RP.rotation.z = 0.35 * Math.sin(t * 0.9);
+
+    // effects sit above the head but don't swing with its circling
     r.fxGroup.position.set(0.7, 0.3 + Math.max(P.y, -0.1), 0);
-    if (r.mood.fx === 'dots') dots.children.forEach((d, i) => { const b = Math.max(0, Math.sin(t * 6 - i * 0.9)); d.position.y = 0.78 + 0.08 * b; d.scale.setScalar(0.8 + 0.3 * b); });
+    const { spark, question, zzz } = r.fxMap;
     if (r.mood.fx === 'spark') { const u = still ? 0.5 : (t * 1.3) % 1; spark.visible = u < 0.85; spark.scale.setScalar(u < 0.3 ? 0.01 + smooth(u / 0.3) : 1); }
-    if (r.mood.fx === 'question') { question.material.rotation = 0.25 * Math.sin(t * 3.5); question.position.y = 0.85 + 0.05 * Math.sin(t * 2.2); }
+    if (r.mood.fx === 'question') { question.material.rotation = 0.25 * Math.sin(t * 3.5); question.position.y = 0.95 + 0.05 * Math.sin(t * 2.2); }
     if (r.mood.fx === 'zzz') zzz.children.forEach((z, i) => {
       const u = still ? (i + 1) / 4 : (t / 3 + i / 3) % 1;
-      z.position.set(0.3 + u * 0.4, 0.6 + u * 0.7, 0.2); z.scale.setScalar(0.16 + u * 0.2);
+      z.position.set(0.3 + u * 0.4, 0.7 + u * 0.7, 0.2); z.scale.setScalar(0.16 + u * 0.2);
       z.material.opacity = still ? 1 : Math.sin(Math.PI * u);
     });
 
