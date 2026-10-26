@@ -225,17 +225,21 @@ function lobeGeometry({ len, rad, root, tip }) {
 }
 
 // Lobes in trail space: +x forward (toward the head), +y up, +z toward the viewer.
+// Lobes in trail space: +x forward (toward the head), +y up, +z toward the viewer.
+// at[0] is how much further back than the front line each lobe sits; the front line is a fixed gap behind the head.
+const HEAD_BACK = 0.49, GAP = 0.07;
 const LOBES = [
-  { at: [-0.42, -0.02, -0.06], len: 1.10, rad: 0.40, root: '#FFF7EF', tip: '#FFA477', pitch: -0.05, yaw: 0.00, ph: 0.0 },
-  { at: [-0.40, 0.21, -0.12], len: 0.92, rad: 0.30, root: '#FFE6D3', tip: '#FF7E52', pitch: 0.24, yaw: -0.04, ph: 1.3 },
-  { at: [-0.36, -0.23, -0.02], len: 0.88, rad: 0.30, root: '#FFD6BE', tip: '#FF5E3A', pitch: -0.32, yaw: 0.05, ph: 2.6 },
-  { at: [-0.34, -0.05, 0.17], len: 0.75, rad: 0.25, root: '#FFF0E5', tip: '#FF9268', pitch: -0.1, yaw: 0.12, ph: 3.9 },
-  { at: [-0.36, 0.09, -0.28], len: 0.84, rad: 0.27, root: '#FFE0CC', tip: '#FF7A4E', pitch: 0.06, yaw: -0.12, ph: 5.1 },
-  { at: [-0.56, 0.36, 0.02], len: 0.53, rad: 0.17, root: '#FFBCA2', tip: '#FF6440', pitch: 0.42, yaw: 0.0, ph: 0.7 },
-  { at: [-0.58, -0.33, 0.07], len: 0.48, rad: 0.16, root: '#FFB096', tip: '#FF5836', pitch: -0.46, yaw: 0.0, ph: 4.4 },
-  { at: [-0.74, 0.10, 0.14], len: 0.44, rad: 0.12, root: '#FFC4AC', tip: '#FF7048', pitch: 0.12, yaw: 0.2, ph: 2.1 },
-  { at: [-0.78, -0.12, -0.16], len: 0.40, rad: 0.11, root: '#FFB89E', tip: '#FF6A44', pitch: -0.18, yaw: -0.2, ph: 3.3 },
+  { at: [0.00, -0.02, -0.06], len: 1.10, rad: 0.40, root: '#FFF7EF', tip: '#FFA477', pitch: -0.05, yaw: 0.00, ph: 0.0 },
+  { at: [-0.06, 0.21, -0.12], len: 0.92, rad: 0.30, root: '#FFE6D3', tip: '#FF7E52', pitch: 0.24, yaw: -0.04, ph: 1.3 },
+  { at: [-0.02, -0.23, -0.02], len: 0.88, rad: 0.30, root: '#FFD6BE', tip: '#FF5E3A', pitch: -0.32, yaw: 0.05, ph: 2.6 },
+  { at: [0.00, -0.05, 0.17], len: 0.75, rad: 0.25, root: '#FFF0E5', tip: '#FF9268', pitch: -0.1, yaw: 0.12, ph: 3.9 },
+  { at: [-0.04, 0.09, -0.28], len: 0.84, rad: 0.27, root: '#FFE0CC', tip: '#FF7A4E', pitch: 0.06, yaw: -0.12, ph: 5.1 },
+  { at: [-0.32, 0.36, 0.02], len: 0.53, rad: 0.17, root: '#FFBCA2', tip: '#FF6440', pitch: 0.42, yaw: 0.0, ph: 0.7 },
+  { at: [-0.34, -0.33, 0.07], len: 0.48, rad: 0.16, root: '#FFB096', tip: '#FF5836', pitch: -0.46, yaw: 0.0, ph: 4.4 },
+  { at: [-0.5, 0.10, 0.14], len: 0.44, rad: 0.12, root: '#FFC4AC', tip: '#FF7048', pitch: 0.12, yaw: 0.2, ph: 2.1 },
+  { at: [-0.55, -0.12, -0.16], len: 0.40, rad: 0.11, root: '#FFB89E', tip: '#FF6A44', pitch: -0.18, yaw: -0.2, ph: 3.3 },
 ];
+const lobeX = def => -(HEAD_BACK + GAP + 0.95 * def.rad) + def.at[0];
 
 // ---------------------------------------------------------------- element
 
@@ -418,7 +422,7 @@ export class PaperComet extends HTMLElement {
     const lobes = LOBES.map(def => {
       const m = new THREE.Mesh(lobeGeometry(def), lobeMat);
       m.castShadow = m.receiveShadow = true;
-      m.position.set(...def.at);
+      m.position.set(lobeX(def), def.at[1], def.at[2]);
       const dir = v(1, 0, 0).applyAxisAngle(v(0, 0, 1), def.pitch).applyAxisAngle(v(0, 1, 0), -def.yaw);
       m.quaternion.setFromUnitVectors(v(0, 1, 0), dir);
       trail.add(m);
@@ -428,10 +432,10 @@ export class PaperComet extends HTMLElement {
       return { m, def, dir, glow };
     });
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,190,150,.5)', 'rgba(255,150,110,.22)', 'rgba(255,130,90,0)'), transparent: true, depthWrite: false, opacity: 0.6 }));
-    halo.position.set(-0.9, -0.05, -0.2); halo.scale.set(2.4, 1.3, 1);
+    halo.position.set(-1.25, -0.05, -0.2); halo.scale.set(2.4, 1.3, 1);
     trail.add(halo);
     const ember = new THREE.PointLight('#FF8E62', 2.2, 3.2, 1.6);
-    ember.position.set(-0.55, -0.12, 0.25);
+    ember.position.set(-0.75, -0.12, 0.25);
     trail.add(ember);
 
     // effects
@@ -467,8 +471,8 @@ export class PaperComet extends HTMLElement {
       renderer, scene, camera, view, head, trail, lobes, halo, arms, antenna, thrust, fxGroup, shadow, faceCtx, faceTex,
       fxMap: { spark, question, zzz }, dust, dustAcc: 0,
       clock: new THREE.Clock(), io, ro, raf: 0, visible: true, plays: [],
-      pose: { x: 0, y: 0, yaw: 0, pitch: 0.12, roll: 0, flap: 1 }, prevHead: v(0.7, 0.3, 0), speed: 0,
-      trailPos: v(0.7, 0.3, 0), trailQ: new THREE.Quaternion(), trailScale: 1, armAngle: 0, armTarget: 0,
+      pose: { x: 0, y: 0, yaw: 0, pitch: 0.12, roll: 0, flap: 1 }, prevHead: v(0.82, 0.3, 0), speed: 0,
+      trailPos: v(0.82, 0.3, 0), trailQ: new THREE.Quaternion(), trailScale: 1, armAngle: 0, armTarget: 0,
       look: { yaw: 0, pitch: 0 }, glance: [0, 0], viewRot: { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 }, viewHold: 0,
       mood: MOODS.idle, moodT0: 0, face: 'eyes', blinkAt: 2, blinkT: -9, faceKey: '', faceDrawnAt: 0, pop: -9,
     };
@@ -603,7 +607,7 @@ export class PaperComet extends HTMLElement {
 
     // place the head
     const H = r.head;
-    H.position.set(0.7 + P.x, 0.3 + P.y, 0);
+    H.position.set(0.82 + P.x, 0.3 + P.y, 0);
     const qPose = new THREE.Quaternion().setFromEuler(new THREE.Euler(P.roll, P.yaw, P.pitch, 'YZX'));
     const qLook = new THREE.Quaternion().setFromEuler(new THREE.Euler(r.look.pitch, r.look.yaw, 0, 'YXZ'));
     H.quaternion.copy(qLook).multiply(qPose);
@@ -648,7 +652,7 @@ export class PaperComet extends HTMLElement {
     this.#drawFace(t, BLINKS.has(r.face) ? lid : 1);
 
     // effects sit above the head but don't swing with its circling
-    r.fxGroup.position.set(0.7, 0.3 + Math.max(P.y, -0.1), 0);
+    r.fxGroup.position.set(0.82, 0.3 + Math.max(P.y, -0.1), 0);
     const { spark, question, zzz } = r.fxMap;
     if (r.mood.fx === 'spark') { const u = still ? 0.5 : (t * 1.3) % 1; spark.visible = u < 0.85; spark.scale.setScalar(u < 0.3 ? 0.01 + smooth(u / 0.3) : 1); }
     if (r.mood.fx === 'question') { question.material.rotation = 0.25 * Math.sin(t * 3.5); question.position.y = 1.0 + 0.05 * Math.sin(t * 2.2); }
@@ -681,7 +685,7 @@ export class PaperComet extends HTMLElement {
       const w = 1 + flutter * 0.06 * Math.sin(t * (4 + P.flap) + def.ph);
       const sway = flutter * 0.05 * Math.sin(t * 2.3 + def.ph);
       m.scale.set(1 + sway * 0.5, r.trailScale * w, 1 - sway * 0.5);
-      m.position.set(def.at[0] * (0.8 + 0.2 * r.trailScale), def.at[1] + flutter * 0.02 * Math.sin(t * 3.1 + def.ph), def.at[2]);
+      m.position.set(lobeX(def) * (0.85 + 0.15 * r.trailScale), def.at[1] + flutter * 0.02 * Math.sin(t * 3.1 + def.ph), def.at[2]);
       const L = def.len * r.trailScale * w;
       glow.position.set(m.position.x - dir.x * L * 0.45, m.position.y - dir.y * L * 0.45, def.at[2] - 0.05);
       glow.scale.set(L * 1.15, def.rad * 2.6, 1);
@@ -699,7 +703,7 @@ export class PaperComet extends HTMLElement {
       const p = r.dust.find(d => d.life <= 0);
       if (!p) break;
       const lobe = r.lobes[Math.floor(Math.random() * r.lobes.length)];
-      const local = v(lobe.def.at[0], lobe.def.at[1], lobe.def.at[2]).addScaledVector(lobe.dir, -lobe.def.len * r.trailScale * (0.7 + Math.random() * 0.6));
+      const local = v(lobeX(lobe.def), lobe.def.at[1], lobe.def.at[2]).addScaledVector(lobe.dir, -lobe.def.len * r.trailScale * (0.7 + Math.random() * 0.6));
       p.m.position.copy(local.applyQuaternion(r.trailQ).add(r.trailPos));
       p.vel.copy(back).multiplyScalar(0.9 + Math.random() * 0.8).add(v((Math.random() - 0.5) * 0.2, (Math.random() - 0.4) * 0.25, (Math.random() - 0.5) * 0.3));
       p.life = p.max = 0.9 + Math.random() * 0.8;
