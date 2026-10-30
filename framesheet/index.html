@@ -1,0 +1,773 @@
+<title>Framesheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a control rail on the left drives a live contact-sheet preview on the right; stacks to one column on phones */
+:root {
+  --bg: #E7E9ED;
+  --panel: #F7F8FA;
+  --ink: #14161B;
+  --muted: #5A6170;
+  --line: #CBD0D8;
+  --well: #D6DAE1;
+  --accent: #2440B8;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCE2F8;
+  --warn: #8A4F00;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1115; --panel: #171A20; --ink: #E8EAEE; --muted: #98A0AE; --line: #2A2F39;
+    --well: #08090C; --accent: #8DA2FF; --accent-ink: #0A0D1A; --accent-soft: #1F2747; --warn: #E8A94C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1115; --panel: #171A20; --ink: #E8EAEE; --muted: #98A0AE; --line: #2A2F39;
+  --well: #08090C; --accent: #8DA2FF; --accent-ink: #0A0D1A; --accent-soft: #1F2747; --warn: #E8A94C;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.masthead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; margin: 0 auto 18px; max-width: 1480px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand h1 {
+  margin: 0; font-family: var(--f-display); font-weight: 800; font-stretch: 72%;
+  font-size: 34px; letter-spacing: 0.01em; text-transform: uppercase; line-height: 1;
+}
+.sprockets { width: 22px; height: 34px; border-radius: 3px; background: var(--ink);
+  background-image: radial-gradient(circle at 50% 50%, var(--bg) 0 3px, transparent 3.5px);
+  background-size: 22px 8.5px; }
+.masthead p { margin: 0; color: var(--muted); max-width: 52ch; }
+
+.app { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 18px; max-width: 1480px; margin: 0 auto; align-items: start; }
+@media (max-width: 880px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+.rail { display: flex; flex-direction: column; gap: 14px; }
+.group { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 12px; margin: 0; min-width: 0; }
+.group > legend, .group-title {
+  font-family: var(--f-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); padding: 0; float: left; width: 100%;
+}
+.group > legend + * { clear: both; }
+
+.drop {
+  border: 1.5px dashed var(--line); border-radius: 6px; padding: 18px 14px; text-align: center;
+  display: flex; flex-direction: column; gap: 8px; align-items: center; transition: border-color .15s, background .15s;
+}
+.drop.over, body.dragging .drop { border-color: var(--accent); background: var(--accent-soft); }
+.drop strong { font-family: var(--f-display); font-stretch: 85%; font-size: 17px; font-weight: 700; }
+.drop small { color: var(--muted); }
+.file-btn { display: inline-flex; cursor: pointer; }
+.file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+.source { font-family: var(--f-mono); font-size: 12px; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+.source dt { color: var(--muted); }
+.source dd { margin: 0; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; font-family: var(--f-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .field > .lbl { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+.field > label output, .field .lbl output { font-family: var(--f-mono); font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 12px; margin: 0; }
+.hint.warn { color: var(--warn); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+input[type="number"], select {
+  width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg);
+  font-family: var(--f-mono); font-variant-numeric: tabular-nums;
+}
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.fps-line { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.fps-line input { font-size: 18px; font-weight: 600; padding: 6px 10px; }
+.fps-line span { font-family: var(--f-mono); color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 99px; padding: 3px 10px; cursor: pointer;
+  font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 6px 8px; cursor: pointer; font-size: 13px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 7px 12px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+.progress { display: flex; flex-direction: column; gap: 6px; }
+.bar { height: 6px; background: var(--well); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+.progress-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.stage-wrap { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.stats { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--ink); font-weight: 600; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pager { display: flex; align-items: center; gap: 6px; font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pager .btn { padding: 5px 10px; }
+.zoom.seg button { padding: 5px 10px; font-family: var(--f-mono); font-size: 12px; }
+
+.stage { background: var(--well); border-radius: 8px; padding: 18px; overflow: auto; max-height: min(82vh, 1400px); min-height: 280px; position: relative; }
+.stage.fit { display: flex; justify-content: center; align-items: flex-start; }
+.stage canvas { display: block; box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 8px 28px rgba(0,0,0,.14); }
+.stage.fit canvas { max-width: 100%; height: auto; }
+.stage .busy { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-mono); font-size: 12px; color: var(--muted); pointer-events: none; }
+
+.export-list { display: flex; flex-direction: column; gap: 8px; }
+.export-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.export-item span { color: var(--muted); overflow-wrap: anywhere; }
+.export-item b { color: var(--ink); font-weight: 600; }
+
+.sample-note { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 6px; background: var(--accent-soft); color: var(--ink); font-size: 13px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0;
+  background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 6px; font-size: 13px; transition: .2s; pointer-events: none; max-width: calc(100% - 32px); z-index: 20; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="masthead">
+  <div class="brand">
+    <div class="sprockets" aria-hidden="true"></div>
+    <h1>Framesheet</h1>
+  </div>
+  <p>Drop in a video, pick how many frames per second to pull, and get a high‑resolution storyboard JPEG you can zoom right into.</p>
+</header>
+
+<main class="app">
+  <aside class="rail">
+    <fieldset class="group">
+      <legend>Video</legend>
+      <div class="drop" id="drop">
+        <strong>Drop a video here</strong>
+        <small>MP4, WebM or MOV. Nothing is uploaded; it all runs in your browser.</small>
+        <label class="btn file-btn" for="file">Choose a file<input type="file" id="file" accept="video/*,.mov,.mkv,.m4v"></label>
+      </div>
+      <dl class="source" id="sourceInfo"></dl>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Frame rate</legend>
+      <div class="field">
+        <label for="fps">Frames per second to capture</label>
+        <div class="fps-line"><input type="number" id="fps" min="0.01" max="60" step="any" value="2"><span>fps</span></div>
+        <div class="chips" id="fpsChips"></div>
+        <p class="hint" id="fpsHint"></p>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="start">Start (s)</label><input type="number" id="start" min="0" step="0.1" value="0"></div>
+        <div class="field"><label for="end">End (s)</label><input type="number" id="end" min="0" step="0.1" value="0"></div>
+      </div>
+      <div class="progress" id="progress" hidden>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="progress-line"><span id="progressText">Extracting…</span><button class="btn" id="cancel" type="button">Stop</button></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Storyboard layout</legend>
+      <div class="field">
+        <label for="cols">Columns <output id="colsOut">6</output></label>
+        <input type="range" id="cols" min="1" max="16" value="6">
+      </div>
+      <div class="field">
+        <label for="panelW">Panel width (sets output resolution)</label>
+        <select id="panelW">
+          <option value="480">480 px</option>
+          <option value="640">640 px</option>
+          <option value="960" selected>960 px</option>
+          <option value="1280">1280 px</option>
+          <option value="1920">1920 px</option>
+          <option value="0">Source resolution</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="lbl" id="sheetLbl">Sheet</span>
+        <div class="seg" role="group" aria-labelledby="sheetLbl" id="sheetSeg">
+          <button type="button" data-v="paper" aria-pressed="true">Paper</button>
+          <button type="button" data-v="film" aria-pressed="false">Film</button>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="captions" checked> Frame number and timecode</label>
+      <div class="field">
+        <label for="notes">Note lines under each panel <output id="notesOut">2</output></label>
+        <input type="range" id="notes" min="0" max="5" value="2">
+      </div>
+      <div class="field">
+        <label for="rpp">Rows per sheet</label>
+        <select id="rpp">
+          <option value="0" selected>As many as fit</option>
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="8">8</option>
+          <option value="10">10</option><option value="12">12</option>
+        </select>
+        <p class="hint">Very long videos are split across several sheets so each JPEG stays within browser limits.</p>
+      </div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Export</legend>
+      <div class="field">
+        <label for="quality">JPEG quality <output id="qualityOut">92</output></label>
+        <input type="range" id="quality" min="60" max="100" value="92">
+      </div>
+      <div class="export-list" id="exportList"></div>
+      <button class="btn primary" id="saveAll" type="button">Download all sheets</button>
+      <p class="hint" id="exportHint"></p>
+    </fieldset>
+  </aside>
+
+  <section class="stage-wrap" aria-label="Storyboard preview">
+    <div class="sample-note" id="sampleNote"><span class="tag">Sample</span><span>These frames come from a built‑in test animation. Drop a video to make your own storyboard.</span></div>
+    <div class="toolbar">
+      <div class="stats" id="stats"></div>
+      <div class="tools">
+        <div class="pager" id="pager">
+          <button class="btn" id="prev" type="button" aria-label="Previous sheet">‹</button>
+          <span id="pageLbl">1 / 1</span>
+          <button class="btn" id="next" type="button" aria-label="Next sheet">›</button>
+        </div>
+        <div class="seg zoom" role="group" aria-label="Zoom" id="zoomSeg">
+          <button type="button" data-z="fit" aria-pressed="true">Fit</button>
+          <button type="button" data-z="0.25" aria-pressed="false">25%</button>
+          <button type="button" data-z="0.5" aria-pressed="false">50%</button>
+          <button type="button" data-z="1" aria-pressed="false">100%</button>
+        </div>
+      </div>
+    </div>
+    <div class="stage fit" id="stage"><canvas id="view" width="10" height="10" aria-label="Storyboard sheet preview"></canvas><div class="busy" id="busy" hidden>Rendering full resolution…</div></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const MAX_FRAMES = 2000;
+  const MAX_DIM = 16384;
+  const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+  const MAX_AREA = isSafari ? 16_000_000 : 100_000_000;
+  const THUMB_W = 360;
+  const FPS_PRESETS = [0.25, 0.5, 1, 2, 4, 8, 12, 24];
+
+  const S = { fps: 2, start: 0, end: 0, cols: 6, panelW: 960, sheet: "paper", captions: true, notes: 2, rpp: 0, quality: 0.92, page: 0, zoom: "fit" };
+  let source = null;     // {kind, name, w, h, duration, video?}
+  let frames = [];       // {t, blob, thumb}
+  let extractToken = 0;
+  let framesVersion = 0;
+  let fullCache = { key: "", canvas: null };
+  let fontsReady = Promise.resolve();
+
+  // ---------- helpers ----------
+  const pad = (n, l) => String(n).padStart(l, "0");
+  function timecode(t) {
+    const ms = Math.round(t * 1000);
+    const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, r = ms % 1000;
+    return `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)}.${pad(r, 3)}`;
+  }
+  function shortDur(t) {
+    const s = Math.round(t * 10) / 10;
+    const m = Math.floor(s / 60);
+    return m ? `${m}:${(s - m * 60).toFixed(1).padStart(4, "0")}` : `${s.toFixed(1)} s`;
+  }
+  const fmt = (n) => n.toLocaleString("en-US");
+  const fpsLabel = (f) => (Math.round(f * 1000) / 1000).toString();
+  let toastTimer;
+  function toast(msg) {
+    const el = $("toast"); el.textContent = msg; el.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+  }
+  function canvasToBlob(c, type, q) { return new Promise((res) => c.toBlob(res, type, q)); }
+  function makeCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+  // ---------- sample source (procedural animation) ----------
+  function drawSample(ctx, w, h, t) {
+    const p = t / 12;
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, `hsl(${215 - p * 25}, 55%, ${18 + p * 42}%)`);
+    sky.addColorStop(1, `hsl(${25 + p * 10}, 75%, ${45 + p * 25}%)`);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    const sx = w * (0.15 + p * 0.7), sy = h * (0.78 - Math.sin(p * Math.PI) * 0.5);
+    ctx.fillStyle = `hsl(42, 100%, ${70 + p * 15}%)`;
+    ctx.beginPath(); ctx.arc(sx, sy, h * 0.08, 0, Math.PI * 2); ctx.fill();
+    const ridge = (yBase, amp, freq, color, shift) => {
+      ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, h);
+      for (let x = 0; x <= w; x += w / 60) ctx.lineTo(x, h * yBase - Math.sin(x / w * freq + shift) * h * amp - Math.sin(x / w * freq * 2.7) * h * amp * 0.4);
+      ctx.lineTo(w, h); ctx.fill();
+    };
+    ridge(0.7, 0.08, 7, `hsl(230, 25%, ${16 + p * 14}%)`, 0.6);
+    ridge(0.82, 0.05, 11, `hsl(228, 30%, ${9 + p * 8}%)`, 2.2);
+    const fx = w * (0.05 + p * 0.9), fy = h * 0.86, s = h * 0.06, step = Math.sin(t * 6) * s * 0.35;
+    ctx.strokeStyle = "#06070A"; ctx.lineWidth = Math.max(2, h * 0.012); ctx.lineCap = "round";
+    ctx.beginPath(); ctx.arc(fx, fy - s * 2.2, s * 0.32, 0, Math.PI * 2); ctx.fillStyle = "#06070A"; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(fx, fy - s * 1.85); ctx.lineTo(fx, fy - s * 0.8);
+    ctx.moveTo(fx, fy - s * 0.8); ctx.lineTo(fx + step, fy); ctx.moveTo(fx, fy - s * 0.8); ctx.lineTo(fx - step, fy);
+    ctx.moveTo(fx, fy - s * 1.6); ctx.lineTo(fx - step * 0.8, fy - s * 1.0); ctx.moveTo(fx, fy - s * 1.6); ctx.lineTo(fx + step * 0.8, fy - s * 1.0);
+    ctx.stroke();
+  }
+  const SAMPLE = { kind: "sample", name: "Sample — dawn walk", w: 1920, h: 1080, duration: 12 };
+
+  // ---------- video source ----------
+  function once(el, ev, ms = 8000) {
+    return new Promise((res, rej) => {
+      const done = (fn, v) => { clearTimeout(timer); el.removeEventListener(ev, ok); el.removeEventListener("error", bad); fn(v); };
+      const ok = () => done(res);
+      const bad = () => done(rej, new Error("decode"));
+      const timer = setTimeout(() => done(res), ms);
+      el.addEventListener(ev, ok); el.addEventListener("error", bad);
+    });
+  }
+  async function seek(v, t) {
+    const p = once(v, "seeked", 5000);
+    v.currentTime = t;
+    await p;
+  }
+  async function loadVideo(file) {
+    if (source && source.video) { URL.revokeObjectURL(source.video.src); source.video.removeAttribute("src"); source.video.load(); }
+    const v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous";
+    const meta = once(v, "loadedmetadata", 15000);
+    v.src = URL.createObjectURL(file);
+    try { await meta; } catch { throw new Error("This browser can't decode that file. Try an MP4 (H.264) or WebM video."); }
+    if (!v.videoWidth) throw new Error("No video track was found in that file.");
+    let duration = v.duration;
+    if (!isFinite(duration)) { // some recorded WebM files report Infinity until the end is reached
+      v.currentTime = 1e7; await once(v, "seeked", 8000); duration = v.duration; v.currentTime = 0; await once(v, "seeked", 5000);
+    }
+    if (!isFinite(duration) || duration <= 0) throw new Error("Couldn't read the length of that video.");
+    await new Promise((r) => (v.readyState >= 2 ? r() : once(v, "loadeddata", 8000).then(r, r)));
+    return { kind: "video", name: file.name, w: v.videoWidth, h: v.videoHeight, duration, video: v, size: file.size };
+  }
+
+  // ---------- extraction ----------
+  function sampleTimes() {
+    const end = Math.min(S.end > S.start ? S.end : source.duration, source.duration);
+    const start = Math.max(0, Math.min(S.start, end));
+    const step = 1 / S.fps;
+    const out = [];
+    for (let i = 0; ; i++) {
+      const t = start + i * step;
+      if (i > 0 && t >= end - 1e-6) break;
+      out.push(t);
+      if (out.length > MAX_FRAMES) break;
+    }
+    return out;
+  }
+  function framePixelWidth() { return Math.min(source.w, S.panelW || source.w); }
+
+  async function extract() {
+    const token = ++extractToken;
+    const times = sampleTimes();
+    updateFpsHint(times.length);
+    if (times.length > MAX_FRAMES) { setProgress(null); return; }
+    const outW = Math.max(16, Math.round(framePixelWidth()));
+    const outH = Math.max(16, Math.round(outW * source.h / source.w));
+    const c = makeCanvas(outW, outH), ctx = c.getContext("2d");
+    const tw = Math.min(THUMB_W, outW), th = Math.round(tw * outH / outW);
+    const out = [];
+    setProgress(0, times.length);
+    let lastPreview = performance.now();
+    for (let i = 0; i < times.length; i++) {
+      if (token !== extractToken) return;
+      const t = times[i];
+      if (source.kind === "sample") drawSample(ctx, outW, outH, t);
+      else {
+        try { await seek(source.video, Math.min(t + 0.004, source.duration - 0.001)); }
+        catch { if (token === extractToken) { setProgress(null); toast("The video stopped decoding partway. Try a different file format."); } return; }
+        if (token !== extractToken) return;
+        ctx.drawImage(source.video, 0, 0, outW, outH);
+      }
+      const blob = await canvasToBlob(c, "image/jpeg", 0.95);
+      const thumb = makeCanvas(tw, th);
+      thumb.getContext("2d").drawImage(c, 0, 0, tw, th);
+      out.push({ t, blob, thumb });
+      setProgress(i + 1, times.length);
+      if (performance.now() - lastPreview > 700) {
+        lastPreview = performance.now();
+        frames = out.slice(); framesVersion++; renderAll();
+      }
+    }
+    if (token !== extractToken) return;
+    frames = out; framesVersion++;
+    setProgress(null);
+    renderAll();
+  }
+  const scheduleExtract = debounce(() => extract(), 450);
+
+  function setProgress(done, total) {
+    const box = $("progress");
+    if (done === null) { box.hidden = true; return; }
+    box.hidden = false;
+    $("barFill").style.width = (total ? (done / total) * 100 : 0) + "%";
+    $("progressText").textContent = `Extracting ${fmt(done)} / ${fmt(total)} frames`;
+  }
+
+  // ---------- layout & drawing ----------
+  function layout() {
+    const N = frames.length;
+    const cw = Math.round(framePixelWidth());
+    const ih = Math.round(cw * source.h / source.w);
+    const u = cw / 100;
+    const g = Math.round(u * 6), m = Math.round(u * 9);
+    const cap = S.captions ? Math.round(u * 9) : 0;
+    const lineH = Math.round(u * 8);
+    const notesH = S.notes * lineH + (S.notes ? Math.round(u * 2) : 0);
+    const cellH = ih + cap + notesH;
+    const cols = Math.max(1, Math.min(S.cols, N || 1));
+    const sheetW = 2 * m + cols * cw + (cols - 1) * g;
+    const hu = Math.max(u, sheetW / 260); // header type grows with wide sheets
+    const hdr = Math.round(hu * 24);
+    const maxH = Math.min(MAX_DIM, Math.floor(MAX_AREA / sheetW));
+    let rpp = Math.max(1, Math.floor((maxH - 2 * m - hdr + g) / (cellH + g)));
+    if (S.rpp > 0) rpp = Math.min(rpp, S.rpp);
+    const totalRows = Math.max(1, Math.ceil(N / cols));
+    const pages = [];
+    for (let r = 0; r < totalRows; r += rpp) {
+      const rows = Math.min(rpp, totalRows - r);
+      pages.push({ first: r * cols, count: Math.max(0, Math.min(rows * cols, N - r * cols)), rows, h: 2 * m + hdr + rows * cellH + (rows - 1) * g });
+    }
+    const tooBig = sheetW > MAX_DIM || sheetW * (2 * m + hdr + cellH) > MAX_AREA;
+    return { N, cw, ih, u, hu, g, m, cap, lineH, notesH, cellH, hdr, cols, sheetW, pages, tooBig };
+  }
+
+  const PALETTES = {
+    paper: { bg: "#FFFFFF", ink: "#121418", muted: "#6B7181", frame: "#121418", rule: "#C9CED6", ph: "#ECEEF2" },
+    film: { bg: "#111215", ink: "#F0F1F4", muted: "#8E95A4", frame: "#3A3E48", rule: "#30343C", ph: "#1C1E23" },
+  };
+
+  async function drawPage(ctx, L, pi, scale, getImg, alive = () => true) {
+    const P = PALETTES[S.sheet], page = L.pages[pi], u = L.u, hu = L.hu;
+    ctx.save();
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.fillStyle = P.bg; ctx.fillRect(0, 0, L.sheetW, page.h);
+
+    // header
+    const title = source.name.replace(/\.[a-z0-9]{2,4}$/i, "");
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = P.muted;
+    ctx.font = `600 ${hu * 3.6}px "IBM Plex Mono", monospace`;
+    ctx.fillText("STORYBOARD", L.m, L.m + hu * 4);
+    ctx.textAlign = "right";
+    ctx.fillText(`SHEET ${pi + 1} / ${L.pages.length}`, L.sheetW - L.m, L.m + hu * 4);
+    ctx.textAlign = "left";
+    ctx.fillStyle = P.ink;
+    ctx.font = `800 ${hu * 9}px "Archivo", "Arial Narrow", sans-serif`;
+    let t = title;
+    const maxTitleW = L.sheetW - 2 * L.m;
+    while (ctx.measureText(t).width > maxTitleW && t.length > 4) t = t.slice(0, -2);
+    if (t !== title) t = t.slice(0, -1) + "…";
+    ctx.fillText(t, L.m, L.m + hu * 14);
+    ctx.fillStyle = P.muted;
+    ctx.font = `400 ${hu * 3.8}px "IBM Plex Mono", monospace`;
+    const last = page.first + page.count;
+    const metaLine = [
+      `${source.w}×${source.h}`,
+      `length ${timecode(source.duration)}`,
+      `${fpsLabel(S.fps)} fps capture`,
+      page.count ? `frames ${page.first + 1}–${last} of ${L.N}` : "no frames",
+    ].join("   ·   ");
+    ctx.fillText(metaLine, L.m, L.m + hu * 19.5);
+    ctx.fillStyle = P.rule;
+    ctx.fillRect(L.m, L.m + L.hdr - hu * 2.5, L.sheetW - 2 * L.m, Math.max(1, u * 0.25));
+
+    // panels
+    for (let k = 0; k < page.count; k++) {
+      if (!alive()) { ctx.restore(); return false; }
+      const i = page.first + k, r = Math.floor(k / L.cols), c = k % L.cols;
+      const x = L.m + c * (L.cw + L.g), y = L.m + L.hdr + r * (L.cellH + L.g);
+      ctx.fillStyle = P.ph; ctx.fillRect(x, y, L.cw, L.ih);
+      const img = await getImg(i);
+      if (!alive()) { if (img && img.close) img.close(); ctx.restore(); return false; }
+      if (img) { ctx.drawImage(img, x, y, L.cw, L.ih); if (img.close) img.close(); }
+      ctx.strokeStyle = P.frame; ctx.lineWidth = Math.max(1, u * 0.3);
+      ctx.strokeRect(x, y, L.cw, L.ih);
+      if (L.cap) {
+        const by = y + L.ih + L.cap * 0.72;
+        ctx.fillStyle = P.ink; ctx.font = `600 ${u * 4.4}px "IBM Plex Mono", monospace`;
+        ctx.textAlign = "left"; ctx.fillText(`#${pad(i + 1, L.N >= 1000 ? 4 : 3)}`, x, by);
+        ctx.fillStyle = P.muted; ctx.font = `400 ${u * 4.4}px "IBM Plex Mono", monospace`;
+        ctx.textAlign = "right"; ctx.fillText(timecode(frames[i].t), x + L.cw, by);
+        ctx.textAlign = "left";
+      }
+      if (S.notes) {
+        ctx.fillStyle = P.rule;
+        for (let l = 1; l <= S.notes; l++) {
+          const ly = y + L.ih + L.cap + Math.round(u * 2) + l * L.lineH - u * 1.2;
+          ctx.fillRect(x, ly, L.cw, Math.max(1, u * 0.18));
+        }
+      }
+    }
+    ctx.restore();
+    return true;
+  }
+
+  function settingsKey(pi) { return [framesVersion, pi, S.cols, S.panelW, S.sheet, S.captions, S.notes, S.rpp].join("|"); }
+
+  async function renderFull(pi, alive) {
+    const key = settingsKey(pi);
+    if (fullCache.key === key && fullCache.canvas) return fullCache.canvas;
+    await fontsReady;
+    const L = layout(), page = L.pages[pi];
+    const c = makeCanvas(L.sheetW, page.h);
+    const ctx = c.getContext("2d");
+    const ok = await drawPage(ctx, L, pi, 1, (i) => createImageBitmap(frames[i].blob), alive);
+    if (!ok) return null;
+    fullCache = { key, canvas: c };
+    return c;
+  }
+
+  // ---------- preview ----------
+  let renderToken = 0;
+  async function renderAll() {
+    const token = ++renderToken;
+    const alive = () => token === renderToken;
+    updateStats();
+    if (!frames.length) return;
+    await fontsReady;
+    if (!alive()) return;
+    const L = layout();
+    S.page = Math.min(S.page, L.pages.length - 1);
+    const page = L.pages[S.page];
+    const view = $("view"), stage = $("stage");
+    stage.classList.toggle("fit", S.zoom === "fit");
+    if (S.zoom === "fit") {
+      $("busy").hidden = true;
+      const avail = Math.max(200, stage.clientWidth - 36);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const scale = Math.min(1, (avail * dpr) / L.sheetW, (Math.min(window.innerHeight * 0.78, 1400) * dpr * 2.2) / page.h);
+      const off = makeCanvas(Math.max(1, Math.round(L.sheetW * scale)), Math.max(1, Math.round(page.h * scale)));
+      const ok = await drawPage(off.getContext("2d"), L, S.page, scale, (i) => frames[i].thumb, alive);
+      if (!ok || !alive()) return;
+      view.width = off.width; view.height = off.height;
+      view.getContext("2d").drawImage(off, 0, 0);
+      view.style.width = Math.round(off.width / dpr) + "px";
+    } else {
+      $("busy").hidden = false;
+      const full = await renderFull(S.page, alive);
+      $("busy").hidden = true;
+      if (!full || !alive()) return;
+      const z = parseFloat(S.zoom);
+      view.width = full.width; view.height = full.height;
+      view.getContext("2d").drawImage(full, 0, 0);
+      view.style.width = Math.round((full.width * z) / (window.devicePixelRatio || 1)) + "px";
+    }
+  }
+
+  function updateStats() {
+    const has = frames.length > 0;
+    $("saveAll").disabled = !has;
+    if (!has) { $("stats").textContent = "No frames yet"; $("exportList").replaceChildren(); return; }
+    const L = layout();
+    const page = L.pages[Math.min(S.page, L.pages.length - 1)];
+    const mp = (L.sheetW * page.h) / 1e6;
+    $("stats").innerHTML = "";
+    const parts = [[fmt(L.N), " frames"], [fmt(L.pages.length), L.pages.length === 1 ? " sheet" : " sheets"], [`${fmt(L.sheetW)} × ${fmt(page.h)}`, " px"], [mp.toFixed(1), " MP"]];
+    parts.forEach(([b, s], idx) => {
+      if (idx) $("stats").append("  ·  ");
+      const el = document.createElement("b"); el.textContent = b; $("stats").append(el, s);
+    });
+    $("pageLbl").textContent = `${S.page + 1} / ${L.pages.length}`;
+    $("prev").disabled = S.page <= 0;
+    $("next").disabled = S.page >= L.pages.length - 1;
+    $("pager").hidden = L.pages.length < 2;
+
+    const list = $("exportList"); list.replaceChildren();
+    L.pages.forEach((p, i) => {
+      const row = document.createElement("div"); row.className = "export-item";
+      const info = document.createElement("span");
+      const b = document.createElement("b"); b.textContent = `Sheet ${i + 1}`;
+      info.append(b, `  ${fmt(L.sheetW)}×${fmt(p.h)} · #${p.first + 1}–${p.first + p.count}`);
+      const btn = document.createElement("button"); btn.className = "btn"; btn.type = "button"; btn.textContent = "JPEG";
+      btn.setAttribute("aria-label", `Download sheet ${i + 1} as JPEG`);
+      btn.addEventListener("click", () => exportPages([i]));
+      row.append(info, btn); list.append(row);
+    });
+    $("saveAll").hidden = L.pages.length < 2;
+    $("exportHint").textContent = L.tooBig ? "This sheet is wider than browsers can draw. Use fewer columns or a smaller panel width." : "";
+    $("exportHint").classList.toggle("warn", L.tooBig);
+  }
+
+  function updateFpsHint(count) {
+    const el = $("fpsHint");
+    if (!source) { el.textContent = ""; return; }
+    const n = count ?? sampleTimes().length;
+    if (n > MAX_FRAMES) {
+      el.textContent = `That would be more than ${fmt(MAX_FRAMES)} frames. Lower the rate or shorten the start–end range.`;
+      el.classList.add("warn");
+    } else {
+      const span = Math.min(S.end > S.start ? S.end : source.duration, source.duration) - Math.max(0, S.start);
+      el.textContent = `${fmt(n)} frames from ${shortDur(Math.max(0, span))} · one every ${shortDur(1 / S.fps).replace(" s", "")} s`;
+      el.classList.remove("warn");
+    }
+    document.querySelectorAll("#fpsChips .chip").forEach((c) => c.setAttribute("aria-pressed", String(parseFloat(c.dataset.v) === S.fps)));
+  }
+
+  function showSource() {
+    const dl = $("sourceInfo"); dl.replaceChildren();
+    const rows = [["File", source.name], ["Size", `${source.w} × ${source.h}`], ["Length", timecode(source.duration)]];
+    if (source.size) rows.push(["Bytes", (source.size / 1048576).toFixed(1) + " MB"]);
+    for (const [k, v] of rows) { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); }
+    $("sampleNote").hidden = source.kind !== "sample";
+    $("end").max = source.duration.toFixed(2); $("start").max = source.duration.toFixed(2);
+  }
+
+  // ---------- export ----------
+  let downloadsNs;
+  async function getDownloads() {
+    if (downloadsNs !== undefined) return downloadsNs;
+    if (!(window.claude && typeof window.claude.use === "function")) return (downloadsNs = false);
+    try { downloadsNs = (await window.claude.use("downloads")) || null; } catch { downloadsNs = null; }
+    return downloadsNs;
+  }
+  async function saveBlob(blob, filename) {
+    const dl = await getDownloads();
+    if (dl) {
+      try { await dl.save({ filename, data: blob }); toast(`Saved ${filename}`); return true; }
+      catch (e) {
+        const code = e && e.code;
+        if (code === "declined") toast("Download cancelled");
+        else if (code === "too_large") toast("That sheet is too large to save here. Lower the panel width or rows per sheet.");
+        else if (code === "rate_limited") toast("A save is already waiting for your answer.");
+        else toast("Downloads aren't available in this view.");
+        return false;
+      }
+    }
+    if (dl === null) { toast("Downloads aren't available in this view."); return false; }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.append(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+    toast(`Saved ${filename}`);
+    return true;
+  }
+  let exporting = false;
+  async function exportPages(indices) {
+    if (exporting || !frames.length) return;
+    const L = layout();
+    if (L.tooBig) { toast("This sheet is wider than browsers can draw. Use fewer columns or a smaller panel width."); return; }
+    exporting = true;
+    const base = source.name.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") || "storyboard";
+    try {
+      for (const i of indices) {
+        toast(`Building sheet ${i + 1} at ${fmt(L.sheetW)}×${fmt(L.pages[i].h)}…`);
+        await new Promise((r) => setTimeout(r, 30));
+        const c = await renderFull(i, () => true);
+        const blob = c && (await canvasToBlob(c, "image/jpeg", S.quality));
+        if (!blob) { toast("Your browser couldn't encode a sheet this large. Lower the panel width or rows per sheet."); break; }
+        const name = `${base}_storyboard_${fpsLabel(S.fps).replace(".", "p")}fps` + (L.pages.length > 1 ? `_sheet${pad(i + 1, 2)}` : "") + ".jpg";
+        const ok = await saveBlob(blob, name);
+        if (!ok) break;
+      }
+    } finally { exporting = false; }
+  }
+
+  // ---------- wiring ----------
+  async function useFile(file) {
+    if (!file) return;
+    if (file.type && !file.type.startsWith("video/") && !/\.(mov|mkv|m4v|mp4|webm|ogv)$/i.test(file.name)) { toast("That file isn't a video."); return; }
+    extractToken++;
+    setProgress(0, 0); $("progressText").textContent = "Opening video…";
+    try {
+      source = await loadVideo(file);
+    } catch (e) { setProgress(null); toast(e.message); return; }
+    S.start = 0; S.end = Math.round(source.duration * 100) / 100; S.page = 0;
+    $("start").value = 0; $("end").value = S.end;
+    showSource();
+    extract();
+  }
+
+  $("file").addEventListener("change", (e) => { useFile(e.target.files[0]); e.target.value = ""; });
+  let dragDepth = 0;
+  window.addEventListener("dragenter", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { dragDepth++; document.body.classList.add("dragging"); } });
+  window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) document.body.classList.remove("dragging"); });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => {
+    e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+    const f = [...(e.dataTransfer?.files || [])].find((f) => f.type.startsWith("video/") || /\.(mov|mkv|m4v|mp4|webm|ogv)$/i.test(f.name)) || e.dataTransfer?.files?.[0];
+    useFile(f);
+  });
+
+  FPS_PRESETS.forEach((v) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = v; b.textContent = fpsLabel(v);
+    b.addEventListener("click", () => { $("fps").value = v; onFps(); });
+    $("fpsChips").append(b);
+  });
+  function onFps() {
+    const v = parseFloat($("fps").value);
+    if (!(v > 0)) return;
+    S.fps = Math.min(60, Math.max(0.01, v));
+    updateFpsHint(); scheduleExtract();
+  }
+  $("fps").addEventListener("input", onFps);
+  for (const id of ["start", "end"]) $(id).addEventListener("input", () => {
+    S[id] = Math.max(0, parseFloat($(id).value) || 0);
+    updateFpsHint(); scheduleExtract();
+  });
+  $("cancel").addEventListener("click", () => { extractToken++; setProgress(null); toast(`Stopped at ${fmt(frames.length)} frames`); renderAll(); });
+
+  const rerender = debounce(renderAll, 60);
+  $("cols").addEventListener("input", () => { S.cols = +$("cols").value; $("colsOut").textContent = S.cols; S.page = 0; rerender(); });
+  $("notes").addEventListener("input", () => { S.notes = +$("notes").value; $("notesOut").textContent = S.notes; rerender(); });
+  $("captions").addEventListener("change", () => { S.captions = $("captions").checked; rerender(); });
+  $("rpp").addEventListener("change", () => { S.rpp = +$("rpp").value; S.page = 0; rerender(); });
+  $("panelW").addEventListener("change", () => { S.panelW = +$("panelW").value; scheduleExtract(); });
+  $("quality").addEventListener("input", () => { S.quality = +$("quality").value / 100; $("qualityOut").textContent = $("quality").value; });
+  $("sheetSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    S.sheet = b.dataset.v;
+    $("sheetSeg").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    rerender();
+  });
+  $("zoomSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    S.zoom = b.dataset.z;
+    $("zoomSeg").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    renderAll();
+  });
+  $("view").addEventListener("dblclick", () => { $("zoomSeg").querySelector(`[data-z="${S.zoom === "fit" ? "1" : "fit"}"]`).click(); });
+  $("prev").addEventListener("click", () => { S.page = Math.max(0, S.page - 1); renderAll(); });
+  $("next").addEventListener("click", () => { S.page++; renderAll(); });
+  $("saveAll").addEventListener("click", () => exportPages(layout().pages.map((_, i) => i)));
+  window.addEventListener("resize", debounce(() => { if (S.zoom === "fit") renderAll(); }, 150));
+
+  // ---------- boot ----------
+  if (document.fonts && document.fonts.load) {
+    fontsReady = Promise.all([
+      document.fonts.load('800 40px "Archivo"'),
+      document.fonts.load('400 20px "IBM Plex Mono"'),
+      document.fonts.load('600 20px "IBM Plex Mono"'),
+    ]).catch(() => {});
+    fontsReady = Promise.race([fontsReady, new Promise((r) => setTimeout(r, 2500))]);
+  }
+  source = SAMPLE;
+  S.end = SAMPLE.duration; $("end").value = SAMPLE.duration;
+  S.panelW = 960;
+  showSource();
+  extract();
+})();
+</script>
